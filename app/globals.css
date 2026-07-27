@@ -896,6 +896,275 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.finance-obligations-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.finance-obligations-panel > .panel-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.finance-obligations-heading .submit-button {
+  border-color: var(--green);
+  background: var(--green);
+  color: white;
+}
+
+.finance-obligations-panel > .status-banner {
+  margin-bottom: 0;
+}
+
+.finance-obligation-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.finance-obligation-kpis article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 88px;
+  align-content: center;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.finance-obligation-kpis article.warning {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.finance-obligation-kpis article.danger {
+  border-left-color: var(--red);
+  background: var(--red-soft);
+}
+
+.finance-obligation-kpis span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.finance-obligation-kpis strong {
+  overflow-wrap: anywhere;
+  font-size: 1.08rem;
+}
+
+.finance-obligation-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) minmax(170px, 0.7fr) minmax(170px, 0.7fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.finance-obligation-filters > * {
+  min-width: 0;
+}
+
+.finance-obligation-table {
+  max-height: 590px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.finance-obligation-table table {
+  min-width: 1260px;
+}
+
+.finance-obligation-table thead {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  background: var(--surface);
+}
+
+.finance-obligation-table th {
+  padding: 11px 12px;
+  background: #fbfcfb;
+  white-space: nowrap;
+}
+
+.finance-obligation-table td {
+  padding: 12px;
+}
+
+.finance-obligation-table td strong,
+.finance-obligation-table td small {
+  display: block;
+}
+
+.finance-obligation-table td small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.finance-obligation-table td:nth-child(5),
+.finance-obligation-table td:nth-child(6),
+.finance-obligation-table td:nth-child(7) {
+  white-space: nowrap;
+}
+
+.finance-obligation-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.finance-obligation-status.pending {
+  background: var(--amber-soft);
+  color: #805512;
+}
+
+.finance-obligation-status.partial {
+  background: var(--blue-soft);
+  color: #28577a;
+}
+
+.finance-obligation-status.overdue {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.finance-obligation-status.paid {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.finance-obligation-status.cancelled {
+  background: #edf0ee;
+  color: var(--muted);
+}
+
+.finance-obligation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.finance-obligation-actions button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.finance-obligation-actions button.primary {
+  border-color: var(--green);
+  background: var(--green);
+  color: white;
+}
+
+.finance-obligation-actions button.danger {
+  border-color: #e4c1bd;
+  color: var(--red);
+}
+
+.finance-obligation-empty {
+  padding: 34px !important;
+  color: var(--muted);
+  text-align: center !important;
+}
+
+.finance-obligation-modal {
+  width: min(760px, 100%);
+}
+
+.finance-settlement-modal {
+  width: min(680px, 100%);
+}
+
+.finance-obligation-detail-modal {
+  width: min(900px, 100%);
+}
+
+.finance-settlement-account {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.finance-settlement-account > div,
+.finance-obligation-detail-grid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.finance-settlement-account span,
+.finance-obligation-detail-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.finance-settlement-account strong,
+.finance-obligation-detail-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.finance-obligation-detail {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.finance-obligation-detail h4 {
+  margin-bottom: -8px;
+}
+
+.finance-obligation-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.finance-settlement-history {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.finance-settlement-history table {
+  min-width: 900px;
+}
+
+.finance-settlement-void {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e4c1bd;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--red);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
 .content-grid.inventory-layout {
   grid-template-columns: repeat(2, minmax(320px, 1fr));
 }
@@ -3675,6 +3944,15 @@ th:last-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .finance-obligation-kpis,
+  .finance-obligation-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-obligation-filters .secondary-button {
+    width: 100%;
+  }
+
   .dashboard-grid,
   .cashbox-grid,
   .warehouse-grid,
@@ -3881,6 +4159,10 @@ th:last-child {
   }
 
   .kpi-grid,
+  .finance-obligation-kpis,
+  .finance-obligation-filters,
+  .finance-settlement-account,
+  .finance-obligation-detail-grid,
   .dashboard-grid,
   .flow-chart,
   .finance-list-grid,

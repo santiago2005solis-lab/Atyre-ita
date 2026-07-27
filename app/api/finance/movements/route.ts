@@ -170,6 +170,19 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Movimiento no encontrado." }, { status: 404 });
   }
 
+  if (
+    currentMovement.sourceModule === "cuentas_por_pagar" ||
+    currentMovement.sourceModule === "cuentas_por_cobrar"
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Este movimiento se administra desde Cuentas por pagar o Cuentas por cobrar.",
+      },
+      { status: 409 },
+    );
+  }
+
   const validTransition =
     (currentMovement.status === "borrador" && body.status === "pendiente") ||
     (canApprove &&

@@ -26,6 +26,7 @@ import {
   type AppModule,
 } from "@/lib/permissions";
 import { FinanceExampleCleanup } from "@/app/components/finance-example-cleanup";
+import { FinanceObligationsPanel } from "@/app/components/finance-obligations-panel";
 import { HumanResourcesModule } from "@/app/components/human-resources-module";
 
 type ProtectedModuleId = Extract<
@@ -500,6 +501,29 @@ export default function AppPage() {
     }
   }
 
+  async function refreshFinanceMovements() {
+    const response = await fetch("/api/finance/movements", {
+      cache: "no-store",
+    });
+    const payload = (await response.json()) as {
+      error?: string;
+      movements?: FinanceMovement[];
+      storageMode?: AppData["storageMode"];
+    };
+
+    if (!response.ok || !payload.movements) {
+      throw new Error(
+        payload.error ?? "No se pudieron actualizar los movimientos financieros.",
+      );
+    }
+
+    setData((current) => ({
+      ...current,
+      financeMovements: payload.movements ?? current.financeMovements,
+      storageMode: payload.storageMode ?? current.storageMode,
+    }));
+  }
+
   async function updateFinanceMovementStatus(
     movementId: string,
     status: FinanceMovementStatus,
@@ -809,6 +833,7 @@ export default function AppPage() {
             financeReport={financeReport}
             money={money}
             onExampleMovementsDeleted={removeFinanceExampleMovements}
+            refreshFinanceMovements={refreshFinanceMovements}
             saving={saving}
             selectedCashbox={selectedCashbox}
             selectedCostCenter={selectedCostCenter}
@@ -1170,6 +1195,7 @@ function FinanceModule({
   financeReport,
   money,
   onExampleMovementsDeleted,
+  refreshFinanceMovements,
   saving,
   selectedCashbox,
   selectedCostCenter,
@@ -1213,6 +1239,7 @@ function FinanceModule({
   };
   money: (value: number) => string;
   onExampleMovementsDeleted: (movementIds: string[]) => void;
+  refreshFinanceMovements: () => Promise<void>;
   saving: SavingTarget;
   selectedCashbox: string;
   selectedCostCenter: string;
@@ -1266,12 +1293,6 @@ function FinanceModule({
     ].some((value) => value.toLocaleLowerCase("es").includes(normalizedSearch));
   });
   const latestMovements = financeReport.filtered.slice(0, 6);
-  const expenseMovements = confirmedMovements.filter(
-    (movement) => movement.movementType === "egreso",
-  );
-  const incomeMovements = confirmedMovements.filter(
-    (movement) => movement.movementType === "ingreso",
-  );
 
   function summarizeMovements(movements: FinanceMovement[]) {
     const income = movements
@@ -2018,75 +2039,29 @@ function FinanceModule({
       )}
 
       {activeFinanceBlock === "pagar" && (
-        <div className="finance-block-grid">
-          <section className="panel">
-            <PanelHeading eyebrow="Cuentas por pagar" title="Compromisos de pago" />
-            <div className="summary-grid">
-              <div>
-                <span>Documentos base</span>
-                <strong>{String(expenseMovements.length)}</strong>
-              </div>
-              <div>
-                <span>Monto estimado</span>
-                <strong>{money(financeReport.expense)}</strong>
-              </div>
-              <div>
-                <span>Estado</span>
-                <strong>Base</strong>
-              </div>
-            </div>
-          </section>
-          <section className="panel">
-            <PanelHeading eyebrow="Proveedores" title="Ultimos egresos" />
-            <div className="report-stack">
-              {expenseMovements.slice(0, 8).map((movement) => (
-                <article className="report-card amber" key={movement.id}>
-                  <div>
-                    <strong>{movement.relatedParty || movement.concept}</strong>
-                    <span>{movement.accountName}</span>
-                  </div>
-                  <strong>{money(movement.amount)}</strong>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
+        <FinanceObligationsPanel
+          canAdmin={canApprove}
+          canEdit={canEdit}
+          cashboxes={cashboxes}
+          costCenters={costCenters}
+          financeAccounts={financeAccounts}
+          money={money}
+          onMovementsRefresh={refreshFinanceMovements}
+          type="pagar"
+        />
       )}
 
       {activeFinanceBlock === "cobrar" && (
-        <div className="finance-block-grid">
-          <section className="panel">
-            <PanelHeading eyebrow="Cuentas por cobrar" title="Ingresos pendientes" />
-            <div className="summary-grid">
-              <div>
-                <span>Documentos base</span>
-                <strong>{String(incomeMovements.length)}</strong>
-              </div>
-              <div>
-                <span>Monto estimado</span>
-                <strong>{money(financeReport.income)}</strong>
-              </div>
-              <div>
-                <span>Estado</span>
-                <strong>Base</strong>
-              </div>
-            </div>
-          </section>
-          <section className="panel">
-            <PanelHeading eyebrow="Clientes" title="Ultimos ingresos" />
-            <div className="report-stack">
-              {incomeMovements.slice(0, 8).map((movement) => (
-                <article className="report-card green" key={movement.id}>
-                  <div>
-                    <strong>{movement.relatedParty || movement.concept}</strong>
-                    <span>{movement.accountName}</span>
-                  </div>
-                  <strong>{money(movement.amount)}</strong>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
+        <FinanceObligationsPanel
+          canAdmin={canApprove}
+          canEdit={canEdit}
+          cashboxes={cashboxes}
+          costCenters={costCenters}
+          financeAccounts={financeAccounts}
+          money={money}
+          onMovementsRefresh={refreshFinanceMovements}
+          type="cobrar"
+        />
       )}
 
       {activeFinanceBlock === "reportes" && reportPanel}
