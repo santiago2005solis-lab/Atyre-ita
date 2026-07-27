@@ -173,6 +173,7 @@ create table if not exists app_module_permissions (
       'rrhh',
       'financiero',
       'deposito',
+      'cierres',
       'usuarios'
     )
   ),
@@ -388,6 +389,7 @@ cross join (
     ('rrhh'),
     ('financiero'),
     ('deposito'),
+    ('cierres'),
     ('usuarios')
 ) as modules(module_name)
 where lower(app_users.email) = 'desarrollosistema@aty.com'

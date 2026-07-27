@@ -5,6 +5,7 @@ export const appModules = [
   "rrhh",
   "financiero",
   "deposito",
+  "cierres",
   "usuarios",
 ] as const;
 export const appRoles = ["lector", "editor", "administrador", "desarrollador"] as const;

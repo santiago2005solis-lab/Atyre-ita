@@ -28,10 +28,17 @@ import {
 import { FinanceExampleCleanup } from "@/app/components/finance-example-cleanup";
 import { FinanceObligationsPanel } from "@/app/components/finance-obligations-panel";
 import { HumanResourcesModule } from "@/app/components/human-resources-module";
+import { MonthlyClosingModule } from "@/app/components/monthly-closing-module";
 
 type ProtectedModuleId = Extract<
   AppModule,
-  "ganadero" | "agricola" | "maquinarias" | "rrhh" | "financiero" | "deposito"
+  | "ganadero"
+  | "agricola"
+  | "maquinarias"
+  | "rrhh"
+  | "financiero"
+  | "deposito"
+  | "cierres"
 >;
 type ModuleId = "inicio" | ProtectedModuleId;
 type SavingTarget = "finance" | "item" | "inventory-movement" | null;
@@ -151,6 +158,7 @@ const protectedModuleDefinitions: Array<{ id: ProtectedModuleId; label: string; 
   { id: "rrhh", label: "Recursos Humanos", mark: "RH" },
   { id: "financiero", label: "Financiero", mark: "FI" },
   { id: "deposito", label: "Deposito", mark: "D" },
+  { id: "cierres", label: "Cierres", mark: "CM" },
 ];
 
 const homeModule = { id: "inicio" as const, label: "Inicio", mark: "IN" };
@@ -806,6 +814,7 @@ export default function AppPage() {
           <DashboardModule
             canReadAgricola={canReadModule(data.currentUser, "agricola")}
             canReadDeposito={canReadModule(data.currentUser, "deposito")}
+            canReadCierres={canReadModule(data.currentUser, "cierres")}
             canReadFinance={canReadModule(data.currentUser, "financiero")}
             canReadGanadero={canReadModule(data.currentUser, "ganadero")}
             canReadMaquinarias={canReadModule(data.currentUser, "maquinarias")}
@@ -881,6 +890,23 @@ export default function AppPage() {
           />
         )}
 
+        {effectiveActiveModule === "cierres" &&
+          canReadModule(data.currentUser, "cierres") && (
+            <MonthlyClosingModule
+              canAdmin={hasPermission(
+                data.currentUser,
+                "cierres",
+                "administrador",
+              )}
+              canEdit={canEditModule(data.currentUser, "cierres")}
+              cashboxes={data.cashboxes}
+              financeMovements={data.financeMovements}
+              hrEmployees={data.hrEmployees}
+              inventoryItems={data.inventoryItems}
+              money={money}
+            />
+          )}
+
         {effectiveActiveModule === "ganadero" &&
           canReadModule(data.currentUser, "ganadero") && (
             <BaseOperationalModule
@@ -947,6 +973,7 @@ export default function AppPage() {
 
 function DashboardModule({
   canReadAgricola,
+  canReadCierres,
   canReadDeposito,
   canReadFinance,
   canReadGanadero,
@@ -960,6 +987,7 @@ function DashboardModule({
   setActiveModule,
 }: {
   canReadAgricola: boolean;
+  canReadCierres: boolean;
   canReadDeposito: boolean;
   canReadFinance: boolean;
   canReadGanadero: boolean;
@@ -1077,6 +1105,17 @@ function DashboardModule({
           <span>Recursos Humanos</span>
           <strong>{canReadRrhh ? String(activeEmployees.length) : "Sin acceso"}</strong>
           <small>Nomina activa {money(payroll)}</small>
+        </button>
+
+        <button
+          className="module-summary-card"
+          disabled={!canReadCierres}
+          onClick={() => setActiveModule("cierres")}
+          type="button"
+        >
+          <span>Cierres</span>
+          <strong>{canReadCierres ? "Mensual" : "Sin acceso"}</strong>
+          <small>Control, validacion y aprobacion del periodo</small>
         </button>
       </section>
 
