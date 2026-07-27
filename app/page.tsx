@@ -25,6 +25,7 @@ import {
   hasPermission,
   type AppModule,
 } from "@/lib/permissions";
+import { FinanceExampleCleanup } from "@/app/components/finance-example-cleanup";
 import { HumanResourcesModule } from "@/app/components/human-resources-module";
 
 type ProtectedModuleId = Extract<
@@ -537,6 +538,20 @@ export default function AppPage() {
     }
   }
 
+  function removeFinanceExampleMovements(movementIds: string[]) {
+    setData((current) => ({
+      ...current,
+      financeMovements: current.financeMovements.filter(
+        (movement) => !movementIds.includes(movement.id),
+      ),
+    }));
+    setStatusMessage(
+      `${movementIds.length} registro${
+        movementIds.length === 1 ? "" : "s"
+      } de ejemplo eliminado${movementIds.length === 1 ? "" : "s"}.`,
+    );
+  }
+
   async function submitInventoryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canEditDeposito) {
@@ -793,6 +808,7 @@ export default function AppPage() {
             financeMovements={data.financeMovements}
             financeReport={financeReport}
             money={money}
+            onExampleMovementsDeleted={removeFinanceExampleMovements}
             saving={saving}
             selectedCashbox={selectedCashbox}
             selectedCostCenter={selectedCostCenter}
@@ -1153,6 +1169,7 @@ function FinanceModule({
   financeMovements,
   financeReport,
   money,
+  onExampleMovementsDeleted,
   saving,
   selectedCashbox,
   selectedCostCenter,
@@ -1195,6 +1212,7 @@ function FinanceModule({
     workflow: FinanceMovement[];
   };
   money: (value: number) => string;
+  onExampleMovementsDeleted: (movementIds: string[]) => void;
   saving: SavingTarget;
   selectedCashbox: string;
   selectedCostCenter: string;
@@ -2100,6 +2118,12 @@ function FinanceModule({
               ))}
             </div>
           </section>
+          <FinanceExampleCleanup
+            canAdmin={canApprove}
+            money={money}
+            movements={financeMovements}
+            onDeleted={onExampleMovementsDeleted}
+          />
           {cashboxesPanel}
         </div>
       )}

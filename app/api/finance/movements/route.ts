@@ -8,11 +8,13 @@ import {
 import { requireAppUser } from "@/lib/auth";
 import {
   isSupabaseConfigured,
+  supabaseDelete,
   supabaseInsert,
   supabasePatch,
   supabaseSelect,
 } from "@/lib/supabase-rest";
 import { hasPermission } from "@/lib/permissions";
+import { isExampleFinanceMovement } from "@/lib/finance-examples";
 
 export const dynamic = "force-dynamic";
 
@@ -195,6 +197,81 @@ export async function PATCH(request: NextRequest) {
   });
 }
 
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAppUser(request, "financiero", "administrador");
+  if (auth.error) return auth.error;
+
+  const body = (await request.json()) as {
+    confirmation?: string;
+    ids?: string[];
+  };
+  const ids = Array.from(
+    new Set(
+      (body.ids ?? [])
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  if (body.confirmation !== "ELIMINAR") {
+    return NextResponse.json(
+      { error: "La confirmacion de seguridad no es valida." },
+      { status: 400 },
+    );
+  }
+  if (!ids.length || ids.length > 20) {
+    return NextResponse.json(
+      { error: "Seleccione entre 1 y 20 registros de ejemplo." },
+      { status: 400 },
+    );
+  }
+
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ deletedIds: ids, storageMode: "demo" });
+  }
+
+  if (ids.some((id) => !isUuid(id))) {
+    return NextResponse.json(
+      { error: "Uno de los movimientos seleccionados no es valido." },
+      { status: 400 },
+    );
+  }
+
+  const rows = await supabaseSelect<unknown[]>(
+    `finance_movements?id=in.(${ids.join(",")})&select=*`,
+  );
+  const movements = rows.map((row) => financeMovementFromRow(row as never));
+
+  if (movements.length !== ids.length) {
+    return NextResponse.json(
+      { error: "Uno de los movimientos ya no existe. Actualice la pantalla." },
+      { status: 409 },
+    );
+  }
+  if (movements.some((movement) => !isExampleFinanceMovement(movement))) {
+    return NextResponse.json(
+      {
+        error:
+          "La seleccion contiene un movimiento que no fue creado como ejemplo.",
+      },
+      { status: 403 },
+    );
+  }
+
+  const deletedRows = await supabaseDelete<unknown[]>(
+    `finance_movements?id=in.(${ids.join(",")})`,
+  );
+  const deletedIds = deletedRows.map((row) =>
+    String((row as { id?: string }).id ?? ""),
+  );
+
+  return NextResponse.json({
+    deletedIds,
+    storageMode: "supabase",
+  });
+}
+
 function validateMovement(body: Partial<FinanceMovement>) {
   if (!body.cashboxName) return "Seleccione una caja.";
   if (!body.movementType) return "Seleccione el tipo de movimiento.";
@@ -208,4 +285,10 @@ function validateMovement(body: Partial<FinanceMovement>) {
     return "Ingrese un monto valido.";
   }
   return null;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
