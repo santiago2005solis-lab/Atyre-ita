@@ -173,6 +173,21 @@ export async function PATCH(request: NextRequest) {
         { status: 404 },
       );
     }
+    if (
+      [
+        "cuentas_por_cobrar",
+        "cuentas_por_pagar",
+        "gastos_caja",
+      ].includes(currentMovement.sourceModule)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Este registro esta vinculado y debe editarse desde su bloque de origen.",
+        },
+        { status: 409 },
+      );
+    }
 
     const editableMovement = {
       ...currentMovement,

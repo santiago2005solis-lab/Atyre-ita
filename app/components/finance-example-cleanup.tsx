@@ -18,6 +18,7 @@ export function FinanceRecordMaintenance({
   money,
   movements,
   onDeleted,
+  onOpenSource,
   onUpdated,
 }: {
   canAdmin: boolean;
@@ -27,6 +28,7 @@ export function FinanceRecordMaintenance({
   money: (value: number) => string;
   movements: FinanceMovement[];
   onDeleted: (ids: string[]) => void;
+  onOpenSource: (source: string) => void;
   onUpdated: (movement: FinanceMovement) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -223,7 +225,8 @@ export function FinanceRecordMaintenance({
 
       <p className="finance-maintenance-help">
         Consulte, corrija o elimine movimientos reales y de prueba. Los cambios
-        afectan inmediatamente las cajas y los reportes.
+        afectan inmediatamente las cajas y los reportes. Los registros
+        vinculados se administran desde su bloque de origen.
       </p>
 
       {message && <div className="status-banner success">{message}</div>}
@@ -376,14 +379,25 @@ export function FinanceRecordMaintenance({
                     </strong>
                   </td>
                   <td>
-                    <button
-                      className="small-action-button"
-                      disabled={!canAdmin}
-                      onClick={() => openEditor(movement)}
-                      type="button"
-                    >
-                      Editar
-                    </button>
+                    {isManagedSource(movement.sourceModule) ? (
+                      <button
+                        className="small-action-button"
+                        disabled={!canAdmin}
+                        onClick={() => onOpenSource(movement.sourceModule)}
+                        type="button"
+                      >
+                        Abrir origen
+                      </button>
+                    ) : (
+                      <button
+                        className="small-action-button"
+                        disabled={!canAdmin}
+                        onClick={() => openEditor(movement)}
+                        type="button"
+                      >
+                        Editar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -768,6 +782,14 @@ function sourceLabel(source: string) {
     }[source] ??
     source.replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase())
   );
+}
+
+function isManagedSource(source: string) {
+  return [
+    "cuentas_por_cobrar",
+    "cuentas_por_pagar",
+    "gastos_caja",
+  ].includes(source);
 }
 
 function statusLabel(status: FinanceMovement["status"]) {

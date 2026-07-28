@@ -2193,6 +2193,15 @@ function FinanceModule({
             money={money}
             movements={financeMovements}
             onDeleted={onMovementsDeleted}
+            onOpenSource={(source) =>
+              setActiveFinanceBlock(
+                source === "gastos_caja"
+                  ? "gastos-caja"
+                  : source === "cuentas_por_pagar"
+                    ? "pagar"
+                    : "cobrar",
+              )
+            }
             onUpdated={onMovementUpdated}
           />
           {cashboxesPanel}
