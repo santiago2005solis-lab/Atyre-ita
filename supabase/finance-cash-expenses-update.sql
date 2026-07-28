@@ -605,16 +605,21 @@ declare
   v_allocation public.finance_cash_expense_allocations;
   v_document_status text;
 begin
-  select a, d.status
-    into v_allocation, v_document_status
-    from public.finance_cash_expense_allocations a
-    join public.finance_cash_expenses d on d.id = a.document_id
-    where a.id = p_allocation_id
+  select *
+    into v_allocation
+    from public.finance_cash_expense_allocations
+    where id = p_allocation_id
     for update;
 
   if v_allocation.id is null then
     raise exception 'Distribucion no encontrada.';
   end if;
+
+  select status
+    into v_document_status
+    from public.finance_cash_expenses
+    where id = v_allocation.document_id;
+
   if v_document_status <> 'pendiente' then
     raise exception 'Solo se pueden clasificar comprobantes pendientes.';
   end if;

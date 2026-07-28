@@ -143,7 +143,9 @@ export async function POST(request: NextRequest) {
       const fingerprint = createHash("sha256")
         .update(JSON.stringify(normalizedPayload))
         .digest("hex");
-      const rows = await supabaseInsert<Record<string, unknown>[]>(
+      const result = await supabaseInsert<
+        Record<string, unknown> | Record<string, unknown>[]
+      >(
         "rpc/finance_import_legacy_cash_backup",
         {
           p_file_name: clean(body.fileName) || "respaldo.json",
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
       );
       return NextResponse.json(
         {
-          batch: cashExpenseImportBatchFromRow(rows[0] as never),
+          batch: cashExpenseImportBatchFromRow(firstRow(result) as never),
           storageMode: "supabase",
         },
         { status: 201 },
@@ -166,7 +168,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: createError }, { status: 400 });
     }
 
-    const rows = await supabaseInsert<Record<string, unknown>[]>(
+    const result = await supabaseInsert<
+      Record<string, unknown> | Record<string, unknown>[]
+    >(
       "rpc/finance_cash_expense_create",
       {
         p_allocations: body.allocations,
@@ -176,7 +180,7 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(
       {
-        document: cashExpenseDocumentFromRow(rows[0] as never),
+        document: cashExpenseDocumentFromRow(firstRow(result) as never),
         storageMode: "supabase",
       },
       { status: 201 },
@@ -240,7 +244,9 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      const rows = await supabaseInsert<Record<string, unknown>[]>(
+      const result = await supabaseInsert<
+        Record<string, unknown> | Record<string, unknown>[]
+      >(
         "rpc/finance_cash_expense_update_allocation",
         {
           p_account_name: clean(body.update.accountName),
@@ -250,7 +256,7 @@ export async function PATCH(request: NextRequest) {
         },
       );
       return NextResponse.json({
-        allocation: cashExpenseAllocationFromRow(rows[0] as never),
+        allocation: cashExpenseAllocationFromRow(firstRow(result) as never),
         storageMode: "supabase",
       });
     }
@@ -269,7 +275,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const rows = await supabaseInsert<Record<string, unknown>[]>(
+    const result = await supabaseInsert<
+      Record<string, unknown> | Record<string, unknown>[]
+    >(
       "rpc/finance_cash_expense_transition",
       {
         p_document_id: body.documentId,
@@ -277,7 +285,7 @@ export async function PATCH(request: NextRequest) {
       },
     );
     return NextResponse.json({
-      document: cashExpenseDocumentFromRow(rows[0] as never),
+      document: cashExpenseDocumentFromRow(firstRow(result) as never),
       storageMode: "supabase",
     });
   } catch (error) {
@@ -484,4 +492,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function clean(value: unknown) {
   return value === null || value === undefined ? "" : String(value).trim();
+}
+
+function firstRow<T>(value: T | T[]) {
+  return Array.isArray(value) ? value[0] : value;
 }
