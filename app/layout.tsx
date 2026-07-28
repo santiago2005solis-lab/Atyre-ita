@@ -1,9 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
 const title = "Atyrenita SG";
 const description = "Sistema web para controlar caja, costos y stock ganadero.";
+
+export const viewport: Viewport = {
+  initialScale: 1,
+  width: "device-width",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
