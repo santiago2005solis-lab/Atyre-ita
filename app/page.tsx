@@ -27,6 +27,7 @@ import {
 } from "@/lib/permissions";
 import { FinanceExampleCleanup } from "@/app/components/finance-example-cleanup";
 import { FinanceObligationsPanel } from "@/app/components/finance-obligations-panel";
+import { CashExpensesPanel } from "@/app/components/cash-expenses-panel";
 import { HumanResourcesModule } from "@/app/components/human-resources-module";
 import { MonthlyClosingModule } from "@/app/components/monthly-closing-module";
 
@@ -46,6 +47,7 @@ type FinanceBlockId =
   | "resumen"
   | "cajas"
   | "movimientos"
+  | "gastos-caja"
   | "plan-cuentas"
   | "centros-costo"
   | "pagar"
@@ -167,6 +169,7 @@ const financeBlockDefinitions: Array<{ id: FinanceBlockId; label: string }> = [
   { id: "resumen", label: "Resumen" },
   { id: "cajas", label: "Cajas" },
   { id: "movimientos", label: "Movimientos" },
+  { id: "gastos-caja", label: "Gastos de caja" },
   { id: "plan-cuentas", label: "Plan de cuentas" },
   { id: "centros-costo", label: "Centros de costo" },
   { id: "pagar", label: "Cuentas por pagar" },
@@ -2009,6 +2012,20 @@ function FinanceModule({
             </section>
           </div>
         </div>
+      )}
+
+      {activeFinanceBlock === "gastos-caja" && (
+        <CashExpensesPanel
+          canAdmin={canApprove}
+          canEdit={canEdit}
+          fallbackAccounts={financeAccounts}
+          fallbackCashboxes={cashboxes}
+          fallbackCostCenters={costCenters}
+          money={money}
+          onFinanceChanged={refreshFinanceMovements}
+          period={selectedMonth || summaryMonth}
+          setPeriod={setSelectedMonth}
+        />
       )}
 
       {activeFinanceBlock === "plan-cuentas" && (
