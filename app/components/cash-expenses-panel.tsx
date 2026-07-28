@@ -114,7 +114,6 @@ export function CashExpensesPanel({
   );
 
   const loadData = useCallback(async () => {
-    setError("");
     try {
       const response = await fetch(
         `/api/finance/cash-expenses?period=${encodeURIComponent(period)}`,
@@ -137,8 +136,38 @@ export function CashExpensesPanel({
   }, [period]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    let cancelled = false;
+    fetch(
+      `/api/finance/cash-expenses?period=${encodeURIComponent(period)}`,
+      { cache: "no-store" },
+    )
+      .then(async (response) => {
+        const payload = (await response.json()) as CashExpenseBundle & {
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(
+            payload.error ?? "No se pudieron cargar los gastos.",
+          );
+        }
+        return payload;
+      })
+      .then((payload) => {
+        if (!cancelled) setBundle(payload);
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "No se pudieron cargar los gastos.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
   const accounts = mergeCatalogs(bundle.accounts, fallbackAccounts);
   const cashboxes = mergeCatalogs(bundle.cashboxes, fallbackCashboxes);
@@ -722,7 +751,7 @@ function CashExpenseRow({
                 busy={busy === allocation.id}
                 canEdit={canEdit && document.status === "pendiente"}
                 costCenters={costCenters}
-                key={allocation.id}
+                key={`${allocation.id}-${allocation.mappingStatus}-${allocation.accountName}-${allocation.costCenterName}-${allocation.linkedModule}`}
                 money={money}
                 onSave={onUpdateAllocation}
               />
@@ -810,12 +839,6 @@ function AllocationRow({
     allocation.costCenterName,
   );
   const [linkedModule, setLinkedModule] = useState(allocation.linkedModule);
-
-  useEffect(() => {
-    setAccountName(allocation.accountName);
-    setCostCenterName(allocation.costCenterName);
-    setLinkedModule(allocation.linkedModule);
-  }, [allocation]);
 
   return (
     <div className="cash-allocation-row">

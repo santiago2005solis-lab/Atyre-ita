@@ -26,7 +26,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [financeRows, itemRows, movementRows, employeeRows] = await Promise.all([
+    const [
+      financeRows,
+      itemRows,
+      movementRows,
+      employeeRows,
+      cashboxRows,
+      accountRows,
+      costCenterRows,
+      warehouseRows,
+    ] = await Promise.all([
       supabaseSelect<unknown[]>(
         "finance_movements?select=*&order=movement_date.desc,created_at.desc",
       ),
@@ -39,16 +48,28 @@ export async function GET(request: NextRequest) {
       supabaseSelect<unknown[]>(
         "hr_employees?select=*&order=full_name.asc",
       ),
+      supabaseSelect<unknown[]>(
+        "finance_cashboxes?active=eq.true&select=name&order=name.asc",
+      ),
+      supabaseSelect<unknown[]>(
+        "finance_accounts?active=eq.true&select=name&order=name.asc",
+      ),
+      supabaseSelect<unknown[]>(
+        "cost_centers?active=eq.true&select=name&order=name.asc",
+      ),
+      supabaseSelect<unknown[]>(
+        "inventory_warehouses?active=eq.true&select=name&order=name.asc",
+      ),
     ]);
 
     const data: AppData = {
       storageMode: "supabase",
       storageMessage: "Conectado a Supabase.",
       currentUser: auth.user,
-      cashboxes,
-      costCenters,
-      financeAccounts,
-      warehouses,
+      cashboxes: mergeNames(cashboxRows, cashboxes),
+      costCenters: mergeNames(costCenterRows, costCenters),
+      financeAccounts: mergeNames(accountRows, financeAccounts),
+      warehouses: mergeNames(warehouseRows, warehouses),
       financeMovements: financeRows.map((row) => financeMovementFromRow(row as never)),
       inventoryItems: itemRows.map((row) => inventoryItemFromRow(row as never)),
       inventoryMovements: movementRows.map((row) => inventoryMovementFromRow(row as never)),
@@ -81,4 +102,17 @@ export async function GET(request: NextRequest) {
           : "No se pudo leer Supabase. Se muestran datos demo.",
     });
   }
+}
+
+function mergeNames(rows: unknown[], fallback: string[]) {
+  return Array.from(
+    new Set([
+      ...rows
+        .map((row) =>
+          String((row as { name?: unknown }).name ?? "").trim(),
+        )
+        .filter(Boolean),
+      ...fallback,
+    ]),
+  ).sort((left, right) => left.localeCompare(right, "es"));
 }
