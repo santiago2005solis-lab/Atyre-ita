@@ -183,6 +183,47 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const isReactivation =
+    canApprove &&
+    currentMovement.status === "anulado" &&
+    body.status === "confirmado";
+
+  if (isReactivation && currentMovement.sourceModule === "gastos_caja") {
+    const allocationRows = await supabaseSelect<
+      Array<{ document_id?: string | null }>
+    >(
+      `finance_cash_expense_allocations?movement_id=eq.${encodeURIComponent(body.id)}&select=document_id`,
+    );
+    const documentIds = Array.from(
+      new Set(
+        allocationRows
+          .map((row) => row.document_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    if (documentIds.length > 0) {
+      const documentRows = await supabaseSelect<
+        Array<{ id: string; status: string }>
+      >(
+        `finance_cash_expenses?id=in.(${documentIds.join(",")})&select=id,status`,
+      );
+      const sourceIsConfirmed =
+        documentRows.length === documentIds.length &&
+        documentRows.every((document) => document.status === "confirmado");
+
+      if (!sourceIsConfirmed) {
+        return NextResponse.json(
+          {
+            error:
+              "El comprobante asociado no esta confirmado. Reactivelo desde Gastos de caja.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
   const validTransition =
     (currentMovement.status === "borrador" && body.status === "pendiente") ||
     (canApprove &&
@@ -190,7 +231,8 @@ export async function PATCH(request: NextRequest) {
       (body.status === "confirmado" || body.status === "anulado")) ||
     (canApprove &&
       currentMovement.status === "confirmado" &&
-      body.status === "anulado");
+      body.status === "anulado") ||
+    isReactivation;
 
   if (!validTransition) {
     return NextResponse.json(

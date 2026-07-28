@@ -544,6 +544,29 @@ export default function AppPage() {
       return;
     }
 
+    const currentMovement = data.financeMovements.find(
+      (movement) => movement.id === movementId,
+    );
+
+    if (
+      status === "anulado" &&
+      !window.confirm(
+        "¿Desea anular este movimiento? Dejara de afectar los saldos y reportes.",
+      )
+    ) {
+      return;
+    }
+
+    if (
+      currentMovement?.status === "anulado" &&
+      status === "confirmado" &&
+      !window.confirm(
+        "¿Desea reactivar este movimiento? Volvera a afectar la caja y los reportes.",
+      )
+    ) {
+      return;
+    }
+
     setUpdatingMovementId(movementId);
 
     try {
@@ -2677,7 +2700,21 @@ function MovementTable({
                         Anular
                       </button>
                     )}
-                    {movement.status === "anulado" && <span className="closed-label">Cerrado</span>}
+                    {movement.status === "anulado" && canApprove && (
+                      <button
+                        className="confirm"
+                        disabled={updatingMovementId === movement.id}
+                        onClick={() =>
+                          onStatusChange(movement.id, "confirmado")
+                        }
+                        type="button"
+                      >
+                        Reactivar
+                      </button>
+                    )}
+                    {movement.status === "anulado" && !canApprove && (
+                      <span className="closed-label">Cerrado</span>
+                    )}
                     {movement.status === "pendiente" && !canApprove && (
                       <span className="closed-label">En revision</span>
                     )}
