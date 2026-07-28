@@ -21,7 +21,9 @@ import {
 export const dynamic = "force-dynamic";
 
 type CashExpenseAction =
+  | "add_allocation"
   | "create"
+  | "delete_allocation"
   | "import"
   | "reopen"
   | "review_document"
@@ -58,9 +60,11 @@ type CashExpenseBody = {
   status?: CashExpenseStatus;
   update?: {
     accountName?: string;
+    amount?: number;
     cashboxName?: string;
     costObjectName?: string;
     costCenterName?: string;
+    detail?: string;
     linkedModule?: LinkedModule;
   };
 };
@@ -204,6 +208,8 @@ export async function PATCH(request: NextRequest) {
   if (
     !body.action ||
     ![
+      "add_allocation",
+      "delete_allocation",
       "review_document",
       "reopen",
       "transition",
@@ -225,6 +231,58 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    if (body.action === "add_allocation") {
+      if (
+        !body.documentId ||
+        !body.update ||
+        !isLinkedModule(body.update.linkedModule) ||
+        !clean(body.update.accountName) ||
+        !clean(body.update.costCenterName) ||
+        !isPositiveNumber(body.update.amount)
+      ) {
+        return NextResponse.json(
+          { error: "Complete correctamente la nueva division." },
+          { status: 400 },
+        );
+      }
+
+      const result = await supabaseInsert<
+        Record<string, unknown> | Record<string, unknown>[]
+      >(
+        "rpc/finance_cash_expense_add_allocation",
+        {
+          p_account_name: clean(body.update.accountName),
+          p_amount: Number(body.update.amount),
+          p_cost_object_name: clean(body.update.costObjectName) || null,
+          p_cost_center_name: clean(body.update.costCenterName),
+          p_detail: clean(body.update.detail) || null,
+          p_document_id: body.documentId,
+          p_linked_module: body.update.linkedModule,
+        },
+      );
+      return NextResponse.json({
+        allocation: cashExpenseAllocationFromRow(firstRow(result) as never),
+        storageMode: "supabase",
+      });
+    }
+
+    if (body.action === "delete_allocation") {
+      if (!body.allocationId) {
+        return NextResponse.json(
+          { error: "Seleccione la division que desea eliminar." },
+          { status: 400 },
+        );
+      }
+      await supabaseInsert<string>(
+        "rpc/finance_cash_expense_delete_allocation",
+        { p_allocation_id: body.allocationId },
+      );
+      return NextResponse.json({
+        deleted: body.allocationId,
+        storageMode: "supabase",
+      });
+    }
+
     if (body.action === "reopen") {
       if (
         !body.documentId ||
@@ -274,7 +332,8 @@ export async function PATCH(request: NextRequest) {
         !body.update ||
         !isLinkedModule(body.update.linkedModule) ||
         !clean(body.update.accountName) ||
-        !clean(body.update.costCenterName)
+        !clean(body.update.costCenterName) ||
+        !isPositiveNumber(body.update.amount)
       ) {
         return NextResponse.json(
           { error: "Complete la clasificacion de la distribucion." },
@@ -289,8 +348,10 @@ export async function PATCH(request: NextRequest) {
         {
           p_account_name: clean(body.update.accountName),
           p_allocation_id: body.allocationId,
+          p_amount: Number(body.update.amount),
           p_cost_object_name: clean(body.update.costObjectName) || null,
           p_cost_center_name: clean(body.update.costCenterName),
+          p_detail: clean(body.update.detail) || null,
           p_linked_module: body.update.linkedModule,
         },
       );
@@ -535,6 +596,8 @@ function cashExpenseError(error: unknown) {
     message.includes("finance_imported_commerce") ||
     message.includes("finance_import_legacy_cash_backup") ||
     message.includes("finance_cash_expense_create") ||
+    message.includes("finance_cash_expense_add_allocation") ||
+    message.includes("finance_cash_expense_delete_allocation") ||
     message.includes("finance_cash_expense_update_allocation") ||
     message.includes("finance_cash_expense_update_document") ||
     message.includes("finance_cash_expense_reopen") ||

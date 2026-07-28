@@ -5773,6 +5773,99 @@ th:last-child {
   background: var(--surface);
 }
 
+.cash-allocation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cash-allocation-toolbar > div {
+  display: grid;
+  gap: 2px;
+}
+
+.cash-allocation-toolbar small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.cash-allocation-create {
+  display: grid;
+  grid-template-columns:
+    minmax(125px, 0.75fr)
+    minmax(160px, 1fr)
+    minmax(165px, 1fr)
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    minmax(110px, 0.65fr)
+    auto;
+  align-items: end;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #b8cec0;
+  border-radius: 8px;
+  background: var(--green-soft);
+}
+
+.cash-allocation-create label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.cash-allocation-create input,
+.cash-allocation-create select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cash-allocation-balance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.cash-allocation-balance span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.cash-allocation-balance strong {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.cash-allocation-balance.unbalanced span:last-child,
+.cash-allocation-balance.unbalanced span:last-child strong {
+  color: var(--red);
+}
+
+.cash-allocation-balance.balanced span:last-child,
+.cash-allocation-balance.balanced span:last-child strong {
+  color: var(--green-dark);
+}
+
 .cash-allocation-head,
 .cash-allocation-row {
   display: grid;
@@ -5837,9 +5930,26 @@ th:last-child {
   text-align: right;
 }
 
-.allocation-control {
+.allocation-amount-editor {
   display: grid;
-  justify-items: end;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  color: var(--red);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.allocation-amount-editor input {
+  color: var(--red);
+  text-align: right;
+}
+
+.allocation-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 5px;
 }
 
@@ -5862,6 +5972,11 @@ th:last-child {
   color: var(--green-dark);
   font-size: 0.68rem;
   font-weight: 900;
+}
+
+.small-action-button.danger {
+  border-color: #edc4bf;
+  color: var(--red);
 }
 
 .cash-expense-detail-actions {
@@ -6221,6 +6336,14 @@ th:last-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .cash-allocation-create {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cash-allocation-create .submit-button {
+    grid-column: 1 / -1;
+  }
+
   .entry-allocation-row .icon-button {
     grid-column: 2;
     justify-self: end;
@@ -6384,6 +6507,19 @@ th:last-child {
     background: transparent;
   }
 
+  .cash-allocation-create,
+  .cash-allocation-balance {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-allocation-create .submit-button {
+    width: 100%;
+  }
+
+  .cash-allocation-balance span {
+    min-height: 38px;
+  }
+
   .cash-allocation-head,
   .commerce-table-head {
     display: none;
@@ -6409,9 +6545,7 @@ th:last-child {
   }
 
   .allocation-control {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    justify-items: start;
+    justify-content: flex-start;
   }
 
   .cash-expense-detail-actions,

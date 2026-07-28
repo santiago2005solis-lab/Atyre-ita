@@ -45,6 +45,15 @@ type DraftAllocation = {
   sourceSubcategory: string;
 };
 
+type AllocationUpdate = {
+  accountName: string;
+  amount: number;
+  costObjectName: string;
+  costCenterName: string;
+  detail: string;
+  linkedModule: LinkedModule;
+};
+
 type ExpenseDraft = {
   cashboxName: string;
   description: string;
@@ -342,12 +351,7 @@ export function CashExpensesPanel({
 
   async function updateAllocation(
     allocation: CashExpenseAllocation,
-    update: {
-      accountName: string;
-      costObjectName: string;
-      costCenterName: string;
-      linkedModule: LinkedModule;
-    },
+    update: AllocationUpdate,
   ) {
     setBusy(allocation.id);
     setError("");
@@ -374,6 +378,73 @@ export function CashExpensesPanel({
         updateError instanceof Error
           ? updateError.message
           : "No se pudo guardar la clasificacion.",
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function addAllocation(
+    documentId: string,
+    update: AllocationUpdate,
+  ) {
+    const busyKey = `add:${documentId}`;
+    setBusy(busyKey);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/finance/cash-expenses", {
+        body: JSON.stringify({
+          action: "add_allocation",
+          documentId,
+          update,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "No se pudo agregar la division.");
+      }
+      setNotice("Division de costo agregada.");
+      await loadData();
+      return true;
+    } catch (addError) {
+      setError(
+        addError instanceof Error
+          ? addError.message
+          : "No se pudo agregar la division.",
+      );
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteAllocation(allocation: CashExpenseAllocation) {
+    setBusy(allocation.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/finance/cash-expenses", {
+        body: JSON.stringify({
+          action: "delete_allocation",
+          allocationId: allocation.id,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "No se pudo eliminar la division.");
+      }
+      setNotice("Division de costo eliminada.");
+      await loadData();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "No se pudo eliminar la division.",
       );
     } finally {
       setBusy("");
@@ -564,6 +635,8 @@ export function CashExpensesPanel({
                   expanded={expandedId === document.id}
                   key={document.id}
                   money={money}
+                  onAddAllocation={addAllocation}
+                  onDeleteAllocation={deleteAllocation}
                   onToggle={() =>
                     setExpandedId((current) =>
                       current === document.id ? "" : document.id,
@@ -706,6 +779,8 @@ function CashExpenseRow({
   document,
   expanded,
   money,
+  onAddAllocation,
+  onDeleteAllocation,
   onToggle,
   onTransition,
   onUpdateAllocation,
@@ -721,6 +796,13 @@ function CashExpenseRow({
   document: CashExpenseDocument;
   expanded: boolean;
   money: (value: number) => string;
+  onAddAllocation: (
+    documentId: string,
+    update: AllocationUpdate,
+  ) => Promise<boolean>;
+  onDeleteAllocation: (
+    allocation: CashExpenseAllocation,
+  ) => Promise<void>;
   onToggle: () => void;
   onTransition: (
     documentId: string,
@@ -728,12 +810,7 @@ function CashExpenseRow({
   ) => Promise<void>;
   onUpdateAllocation: (
     allocation: CashExpenseAllocation,
-    update: {
-      accountName: string;
-      costObjectName: string;
-      costCenterName: string;
-      linkedModule: LinkedModule;
-    },
+    update: AllocationUpdate,
   ) => Promise<void>;
   onUpdateCashbox: (
     documentId: string,
@@ -743,6 +820,14 @@ function CashExpenseRow({
   const automaticCount = document.allocations.filter(
     (allocation) => allocation.mappingStatus === "automatico",
   ).length;
+  const [showAllocationEntry, setShowAllocationEntry] = useState(false);
+  const allocatedTotal = document.allocations.reduce(
+    (sum, allocation) => sum + allocation.amount,
+    0,
+  );
+  const allocationDifference = document.totalAmount - allocatedTotal;
+  const allocationBalanced = Math.abs(allocationDifference) < 0.01;
+  const canManageAllocations = canEdit && document.status === "pendiente";
 
   return (
     <article className={`cash-expense-row ${expanded ? "expanded" : ""}`}>
@@ -819,6 +904,55 @@ function CashExpenseRow({
             )}
           </div>
 
+          <div className="cash-allocation-toolbar">
+            <div>
+              <strong>Divisiones de costo</strong>
+              <small>
+                Cada linea define donde se aplicara una parte del gasto.
+              </small>
+            </div>
+            {canManageAllocations && (
+              <button
+                className="secondary-button"
+                onClick={() => setShowAllocationEntry((current) => !current)}
+                type="button"
+              >
+                {showAllocationEntry ? "Cancelar" : "Agregar division"}
+              </button>
+            )}
+          </div>
+
+          {showAllocationEntry && canManageAllocations && (
+            <AllocationEntry
+              accounts={accounts}
+              busy={busy === `add:${document.id}`}
+              costCenters={costCenters}
+              onAdd={async (update) => {
+                const created = await onAddAllocation(document.id, update);
+                if (created) setShowAllocationEntry(false);
+                return created;
+              }}
+              suggestedAmount={Math.max(allocationDifference, 0)}
+            />
+          )}
+
+          <div
+            className={`cash-allocation-balance ${
+              allocationBalanced ? "balanced" : "unbalanced"
+            }`}
+          >
+            <span>
+              Total comprobante <strong>{money(document.totalAmount)}</strong>
+            </span>
+            <span>
+              Total distribuido <strong>{money(allocatedTotal)}</strong>
+            </span>
+            <span>
+              {allocationBalanced ? "Distribucion completa" : "Diferencia"}
+              <strong>{money(Math.abs(allocationDifference))}</strong>
+            </span>
+          </div>
+
           <div className="cash-allocation-table">
             <div className="cash-allocation-head">
               <span>Origen recibido</span>
@@ -836,8 +970,9 @@ function CashExpenseRow({
                 busy={busy === allocation.id}
                 canEdit={canEdit && document.status === "pendiente"}
                 costCenters={costCenters}
-                key={`${allocation.id}-${allocation.mappingStatus}-${allocation.accountName}-${allocation.costCenterName}-${allocation.costObjectName}-${allocation.linkedModule}`}
+                key={`${allocation.id}-${allocation.mappingStatus}-${allocation.accountName}-${allocation.costCenterName}-${allocation.costObjectName}-${allocation.linkedModule}-${allocation.amount}-${allocation.detail}`}
                 money={money}
+                onDelete={onDeleteAllocation}
                 onSave={onUpdateAllocation}
               />
             ))}
@@ -859,7 +994,8 @@ function CashExpenseRow({
                   disabled={
                     busy === document.id ||
                     automaticCount > 0 ||
-                    !document.cashboxReviewed
+                    !document.cashboxReviewed ||
+                    !allocationBalanced
                   }
                   onClick={() =>
                     void onTransition(document.id, "confirmado")
@@ -1012,6 +1148,7 @@ function AllocationRow({
   canEdit,
   costCenters,
   money,
+  onDelete,
   onSave,
 }: {
   accounts: string[];
@@ -1020,14 +1157,10 @@ function AllocationRow({
   canEdit: boolean;
   costCenters: string[];
   money: (value: number) => string;
+  onDelete: (allocation: CashExpenseAllocation) => Promise<void>;
   onSave: (
     allocation: CashExpenseAllocation,
-    update: {
-      accountName: string;
-      costObjectName: string;
-      costCenterName: string;
-      linkedModule: LinkedModule;
-    },
+    update: AllocationUpdate,
   ) => Promise<void>;
 }) {
   const [accountName, setAccountName] = useState(allocation.accountName);
@@ -1038,6 +1171,7 @@ function AllocationRow({
     allocation.costCenterName,
   );
   const [linkedModule, setLinkedModule] = useState(allocation.linkedModule);
+  const [amount, setAmount] = useState(String(allocation.amount));
 
   return (
     <div className="cash-allocation-row">
@@ -1081,7 +1215,22 @@ function AllocationRow({
         placeholder="Vehiculo, persona, obra..."
         value={costObjectName}
       />
-      <strong className="allocation-amount">{money(allocation.amount)}</strong>
+      {canEdit ? (
+        <label className="allocation-amount-editor">
+          <span>Gs.</span>
+          <input
+            aria-label="Monto de la division"
+            disabled={busy}
+            inputMode="numeric"
+            min="1"
+            onChange={(event) => setAmount(event.target.value)}
+            type="number"
+            value={amount}
+          />
+        </label>
+      ) : (
+        <strong className="allocation-amount">{money(allocation.amount)}</strong>
+      )}
       <span className="allocation-control">
         <span
           className={`mapping-pill ${allocation.mappingStatus}`}
@@ -1091,22 +1240,165 @@ function AllocationRow({
         {canEdit && (
           <button
             className="small-action-button"
-            disabled={busy}
             onClick={() =>
               void onSave(allocation, {
                 accountName,
+                amount: numericValue(amount),
                 costObjectName,
                 costCenterName,
+                detail: allocation.detail,
                 linkedModule,
               })
             }
+            disabled={busy || numericValue(amount) <= 0}
             type="button"
           >
             {busy ? "..." : "Guardar"}
           </button>
         )}
+        {canEdit && (
+          <button
+            className="small-action-button danger"
+            disabled={busy}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Eliminar esta division de costo? Luego debera ajustar los importes restantes.",
+                )
+              ) {
+                void onDelete(allocation);
+              }
+            }}
+            type="button"
+          >
+            Eliminar
+          </button>
+        )}
       </span>
     </div>
+  );
+}
+
+function AllocationEntry({
+  accounts,
+  busy,
+  costCenters,
+  onAdd,
+  suggestedAmount,
+}: {
+  accounts: string[];
+  busy: boolean;
+  costCenters: string[];
+  onAdd: (update: AllocationUpdate) => Promise<boolean>;
+  suggestedAmount: number;
+}) {
+  const [draft, setDraft] = useState<DraftAllocation>(() => ({
+    ...createDraftAllocation(accounts, costCenters),
+    amount: suggestedAmount > 0 ? String(suggestedAmount) : "",
+  }));
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onAdd({
+      accountName: draft.accountName,
+      amount: numericValue(draft.amount),
+      costObjectName: draft.costObjectName,
+      costCenterName: draft.costCenterName,
+      detail: draft.detail,
+      linkedModule: draft.linkedModule,
+    });
+  }
+
+  return (
+    <form className="cash-allocation-create" onSubmit={submit}>
+      <label>
+        Modulo
+        <select
+          disabled={busy}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              linkedModule: event.target.value as LinkedModule,
+            })
+          }
+          value={draft.linkedModule}
+        >
+          {linkedModules.map((module) => (
+            <option key={module}>{module}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Cuenta contable
+        <select
+          disabled={busy}
+          onChange={(event) =>
+            setDraft({ ...draft, accountName: event.target.value })
+          }
+          value={draft.accountName}
+        >
+          {accounts.map((account) => (
+            <option key={account}>{account}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Centro de costo
+        <select
+          disabled={busy}
+          onChange={(event) =>
+            setDraft({ ...draft, costCenterName: event.target.value })
+          }
+          value={draft.costCenterName}
+        >
+          {costCenters.map((center) => (
+            <option key={center}>{center}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Objeto asociado
+        <input
+          disabled={busy}
+          onChange={(event) =>
+            setDraft({ ...draft, costObjectName: event.target.value })
+          }
+          placeholder="Vehiculo, persona, obra..."
+          value={draft.costObjectName}
+        />
+      </label>
+      <label>
+        Detalle
+        <input
+          disabled={busy}
+          onChange={(event) =>
+            setDraft({ ...draft, detail: event.target.value })
+          }
+          value={draft.detail}
+        />
+      </label>
+      <label>
+        Monto
+        <input
+          disabled={busy}
+          inputMode="numeric"
+          min="1"
+          onChange={(event) =>
+            setDraft({ ...draft, amount: event.target.value })
+          }
+          required
+          type="number"
+          value={draft.amount}
+        />
+      </label>
+      <button
+        className="submit-button"
+        disabled={busy || numericValue(draft.amount) <= 0}
+        type="submit"
+      >
+        {busy ? "Agregando..." : "Agregar"}
+      </button>
+    </form>
   );
 }
 
