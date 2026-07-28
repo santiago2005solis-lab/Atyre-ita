@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 type CashExpenseAction =
   | "create"
   | "import"
+  | "reopen"
   | "review_document"
   | "transition"
   | "update_allocation"
@@ -204,6 +205,7 @@ export async function PATCH(request: NextRequest) {
     !body.action ||
     ![
       "review_document",
+      "reopen",
       "transition",
       "update_allocation",
       "update_document",
@@ -223,6 +225,32 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    if (body.action === "reopen") {
+      if (
+        !body.documentId ||
+        !hasPermission(auth.user, "financiero", "administrador")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Se requiere permiso de administrador para reabrir el comprobante.",
+          },
+          { status: 403 },
+        );
+      }
+
+      const result = await supabaseInsert<
+        Record<string, unknown> | Record<string, unknown>[]
+      >(
+        "rpc/finance_cash_expense_reopen",
+        { p_document_id: body.documentId },
+      );
+      return NextResponse.json({
+        document: cashExpenseDocumentFromRow(firstRow(result) as never),
+        storageMode: "supabase",
+      });
+    }
+
     if (body.action === "review_document") {
       if (!body.documentId) {
         return NextResponse.json(
@@ -509,6 +537,7 @@ function cashExpenseError(error: unknown) {
     message.includes("finance_cash_expense_create") ||
     message.includes("finance_cash_expense_update_allocation") ||
     message.includes("finance_cash_expense_update_document") ||
+    message.includes("finance_cash_expense_reopen") ||
     message.includes("finance_cash_expense_review_document") ||
     message.includes("finance_cash_expense_transition") ||
     message.includes("PGRST205") ||

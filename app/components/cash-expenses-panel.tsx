@@ -282,15 +282,28 @@ export function CashExpensesPanel({
 
   async function transitionDocument(
     documentId: string,
-    status: "confirmado" | "anulado",
+    status: "confirmado" | "anulado" | "pendiente",
   ) {
+    if (
+      status === "pendiente" &&
+      !window.confirm(
+        "¿Desea reabrir este comprobante para corregirlo? Debera revisar la caja y confirmarlo nuevamente.",
+      )
+    ) {
+      return;
+    }
+
     await patchDocument(
       documentId,
-      { action: "transition", documentId, status },
+      status === "pendiente"
+        ? { action: "reopen", documentId }
+        : { action: "transition", documentId, status },
       status === "confirmado"
         ? "Comprobante confirmado y movimientos financieros generados."
-        : "Comprobante anulado.",
-      status === "confirmado",
+        : status === "pendiente"
+          ? "Comprobante reabierto. Revise la caja antes de confirmarlo."
+          : "Comprobante anulado.",
+      status !== "anulado",
     );
   }
 
@@ -711,7 +724,7 @@ function CashExpenseRow({
   onToggle: () => void;
   onTransition: (
     documentId: string,
-    status: "confirmado" | "anulado",
+    status: "confirmado" | "anulado" | "pendiente",
   ) => Promise<void>;
   onUpdateAllocation: (
     allocation: CashExpenseAllocation,
@@ -865,6 +878,16 @@ function CashExpenseRow({
                 type="button"
               >
                 Anular comprobante y movimientos
+              </button>
+            )}
+            {canAdmin && document.status === "anulado" && (
+              <button
+                className="small-action-button"
+                disabled={busy === document.id}
+                onClick={() => void onTransition(document.id, "pendiente")}
+                type="button"
+              >
+                Reabrir para corregir
               </button>
             )}
           </div>
