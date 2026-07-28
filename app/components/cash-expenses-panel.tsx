@@ -371,6 +371,11 @@ export function CashExpensesPanel({
     documentId: string,
     cashboxName: string,
   ) {
+    const currentDocument = bundle.documents.find(
+      (document) => document.id === documentId,
+    );
+    const isConfirmed = currentDocument?.status === "confirmado";
+
     await patchDocument(
       documentId,
       {
@@ -378,7 +383,10 @@ export function CashExpensesPanel({
         documentId,
         update: { cashboxName },
       },
-      "Caja revisada y guardada.",
+      isConfirmed
+        ? "Caja corregida en el comprobante y sus movimientos."
+        : "Caja revisada y guardada.",
+      isConfirmed,
     );
   }
 
@@ -759,7 +767,10 @@ function CashExpenseRow({
         <div className="cash-expense-detail">
           <CashboxImpactEditor
             busy={busy === document.id}
-            canEdit={canEdit && document.status === "pendiente"}
+            canEdit={
+              (canEdit && document.status === "pendiente") ||
+              (canAdmin && document.status === "confirmado")
+            }
             cashboxBalances={cashboxBalances}
             cashboxes={cashboxes}
             document={document}
@@ -884,9 +895,23 @@ function CashboxImpactEditor({
 
   const confirmedBalance = cashboxBalances[cashboxName] ?? 0;
   const isPending = document.status === "pendiente";
-  const projectedBalance = isPending
+  const isCashboxChange = cashboxName !== document.cashboxName;
+  const projectedBalance = isPending || isCashboxChange
     ? confirmedBalance - document.totalAmount
     : confirmedBalance;
+
+  function saveCashbox() {
+    if (
+      document.status === "confirmado" &&
+      isCashboxChange &&
+      !window.confirm(
+        `¿Desea mover este gasto confirmado de ${document.cashboxName} a ${cashboxName}?`,
+      )
+    ) {
+      return;
+    }
+    void onSave(document.id, cashboxName);
+  }
 
   return (
     <section className="cashbox-impact">
@@ -911,11 +936,15 @@ function CashboxImpactEditor({
         {canEdit && (
           <button
             className="small-action-button"
-            disabled={busy || !cashboxName}
-            onClick={() => void onSave(document.id, cashboxName)}
+            disabled={busy || !cashboxName || !isCashboxChange}
+            onClick={saveCashbox}
             type="button"
           >
-            {busy ? "Guardando..." : "Guardar caja"}
+            {busy
+              ? "Guardando..."
+              : document.status === "confirmado"
+                ? "Cambiar caja"
+                : "Guardar caja"}
           </button>
         )}
       </div>
@@ -925,13 +954,25 @@ function CashboxImpactEditor({
           <dd>{money(confirmedBalance)}</dd>
         </div>
         <div>
-          <dt>{isPending ? "Egreso al confirmar" : "Importe documentado"}</dt>
+          <dt>
+            {isPending
+              ? "Egreso al confirmar"
+              : isCashboxChange
+                ? "Egreso que se movera"
+                : "Importe documentado"}
+          </dt>
           <dd className="negative">
-            {money(isPending ? -document.totalAmount : document.totalAmount)}
+            {money(
+              isPending || isCashboxChange
+                ? -document.totalAmount
+                : document.totalAmount,
+            )}
           </dd>
         </div>
         <div>
-          <dt>{isPending ? "Saldo proyectado" : "Saldo actual"}</dt>
+          <dt>
+            {isPending || isCashboxChange ? "Saldo proyectado" : "Saldo actual"}
+          </dt>
           <dd className={projectedBalance < 0 ? "negative" : "positive"}>
             {money(projectedBalance)}
           </dd>

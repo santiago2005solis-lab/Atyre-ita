@@ -280,12 +280,36 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
+      const documentRows = await supabaseSelect<Array<{ status: string }>>(
+        `finance_cash_expenses?id=eq.${encodeURIComponent(body.documentId)}&select=status&limit=1`,
+      );
+      const currentDocument = documentRows[0];
+      if (!currentDocument) {
+        return NextResponse.json(
+          { error: "Comprobante no encontrado." },
+          { status: 404 },
+        );
+      }
+      if (
+        currentDocument.status === "confirmado" &&
+        !hasPermission(auth.user, "financiero", "administrador")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Se requiere permiso de administrador para cambiar la caja de un comprobante confirmado.",
+          },
+          { status: 403 },
+        );
+      }
+
       const result = await supabaseInsert<
         Record<string, unknown> | Record<string, unknown>[]
       >(
         "rpc/finance_cash_expense_update_document",
         {
           p_cashbox_name: clean(body.update?.cashboxName),
+          p_changed_by_name: auth.user.fullName,
           p_document_id: body.documentId,
         },
       );
