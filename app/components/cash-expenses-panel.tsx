@@ -57,8 +57,11 @@ type ExpenseDraft = {
 type ImportPreview = {
   allocationCount: number;
   commerceCount: number;
+  duplicateDocumentGroups: number;
   expenseCount: number;
   fileName: string;
+  missingDocumentCount: number;
+  missingResponsibleCount: number;
   payload: Record<string, unknown>;
   totalAmount: number;
 };
@@ -126,6 +129,7 @@ export function CashExpensesPanel({
         throw new Error(payload.error ?? "No se pudieron cargar los gastos.");
       }
       setBundle(payload);
+      setError("");
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -153,7 +157,10 @@ export function CashExpensesPanel({
         return payload;
       })
       .then((payload) => {
-        if (!cancelled) setBundle(payload);
+        if (!cancelled) {
+          setBundle(payload);
+          setError("");
+        }
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
@@ -596,6 +603,27 @@ export function CashExpensesPanel({
               Los comprobantes se guardaran como pendientes. No modificaran los
               saldos financieros hasta revisar su clasificacion y confirmarlos.
             </div>
+            {(importPreview.duplicateDocumentGroups > 0 ||
+              importPreview.missingDocumentCount > 0 ||
+              importPreview.missingResponsibleCount > 0) && (
+              <div className="status-banner warning">
+                Revision de calidad:{" "}
+                {[
+                  importPreview.duplicateDocumentGroups > 0
+                    ? `${importPreview.duplicateDocumentGroups} numeros de comprobante repetidos`
+                    : "",
+                  importPreview.missingDocumentCount > 0
+                    ? `${importPreview.missingDocumentCount} comprobantes sin numero`
+                    : "",
+                  importPreview.missingResponsibleCount > 0
+                    ? `${importPreview.missingResponsibleCount} comprobantes sin responsable`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("; ")}
+                . Se conservaran todos para su revision.
+              </div>
+            )}
             <dl className="import-file-detail">
               <div>
                 <dt>Archivo</dt>
@@ -1338,10 +1366,25 @@ function inspectLegacyPayload(
   }
 
   let allocationCount = 0;
+  let missingDocumentCount = 0;
+  let missingResponsibleCount = 0;
   let totalAmount = 0;
+  const documentCounts = new Map<string, number>();
   payload.expenses.forEach((expense) => {
     if (!isRecord(expense) || !Array.isArray(expense.allocations)) {
       throw new Error("Existe un comprobante sin distribuciones validas.");
+    }
+    const documentNumber = cleanValue(expense.comprobante);
+    if (documentNumber) {
+      documentCounts.set(
+        documentNumber,
+        (documentCounts.get(documentNumber) ?? 0) + 1,
+      );
+    } else {
+      missingDocumentCount += 1;
+    }
+    if (!cleanValue(expense.responsable)) {
+      missingResponsibleCount += 1;
     }
     expense.allocations.forEach((allocation) => {
       if (!isRecord(allocation)) {
@@ -1361,8 +1404,13 @@ function inspectLegacyPayload(
     commerceCount: Array.isArray(payload.commerceRecords)
       ? payload.commerceRecords.length
       : 0,
+    duplicateDocumentGroups: [...documentCounts.values()].filter(
+      (count) => count > 1,
+    ).length,
     expenseCount: payload.expenses.length,
     fileName,
+    missingDocumentCount,
+    missingResponsibleCount,
     payload,
     totalAmount,
   };
@@ -1440,4 +1488,8 @@ function formatDateTime(value: string) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cleanValue(value: unknown) {
+  return value === null || value === undefined ? "" : String(value).trim();
 }

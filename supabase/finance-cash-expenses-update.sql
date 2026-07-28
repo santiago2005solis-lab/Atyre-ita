@@ -9,8 +9,16 @@ create table if not exists public.finance_import_batches (
   commerce_count integer not null default 0,
   total_amount numeric(18, 2) not null default 0,
   imported_by_name text,
+  source_balances jsonb not null default '{}'::jsonb,
+  source_catalogs jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.finance_import_batches
+  add column if not exists source_balances jsonb not null default '{}'::jsonb;
+
+alter table public.finance_import_batches
+  add column if not exists source_catalogs jsonb not null default '{}'::jsonb;
 
 create table if not exists public.finance_cash_expenses (
   id uuid primary key default gen_random_uuid(),
@@ -132,6 +140,9 @@ declare
   v_amount numeric(18, 2);
   v_batch public.finance_import_batches;
   v_cashbox text;
+  v_catalog_group text;
+  v_catalog_item jsonb;
+  v_catalog_values jsonb;
   v_commerce jsonb;
   v_commerce_count integer := 0;
   v_cost_center text;
@@ -156,14 +167,74 @@ begin
   insert into public.finance_import_batches (
     file_name,
     fingerprint,
-    imported_by_name
+    imported_by_name,
+    source_balances,
+    source_catalogs
   )
   values (
     coalesce(nullif(trim(p_file_name), ''), 'respaldo.json'),
     trim(p_fingerprint),
-    nullif(trim(coalesce(p_imported_by_name, '')), '')
+    nullif(trim(coalesce(p_imported_by_name, '')), ''),
+    coalesce(p_payload -> 'balances', '{}'::jsonb),
+    coalesce(p_payload -> 'tables', '{}'::jsonb)
   )
   returning * into v_batch;
+
+  if jsonb_typeof(coalesce(p_payload #> '{tables,cashboxes}', '[]'::jsonb)) = 'array' then
+    for v_catalog_item in
+      select value
+      from jsonb_array_elements(
+        coalesce(p_payload #> '{tables,cashboxes}', '[]'::jsonb)
+      )
+    loop
+      v_cashbox := nullif(trim(v_catalog_item #>> '{}'), '');
+      if v_cashbox is not null then
+        insert into public.finance_cashboxes (name, active)
+          values (v_cashbox, true)
+          on conflict (name) do update set active = true;
+      end if;
+    end loop;
+  end if;
+
+  if jsonb_typeof(coalesce(p_payload #> '{tables,subcategories}', '{}'::jsonb)) = 'object' then
+    for v_catalog_group, v_catalog_values in
+      select key, value
+      from jsonb_each(
+        coalesce(p_payload #> '{tables,subcategories}', '{}'::jsonb)
+      )
+    loop
+      if jsonb_typeof(v_catalog_values) = 'array' then
+        for v_catalog_item in
+          select value from jsonb_array_elements(v_catalog_values)
+        loop
+          v_cost_center := nullif(trim(v_catalog_item #>> '{}'), '');
+          if v_cost_center is not null then
+            v_linked_module := case lower(v_catalog_group)
+              when 'ganadero' then 'Ganadero'
+              when 'agrícola' then 'Agricola'
+              when 'agricola' then 'Agricola'
+              when 'inversión' then
+                case
+                  when lower(v_cost_center) = 'maquinarias' then 'Maquinarias'
+                  else 'Financiero'
+                end
+              when 'inversion' then
+                case
+                  when lower(v_cost_center) = 'maquinarias' then 'Maquinarias'
+                  else 'Financiero'
+                end
+              when 'administrativo' then 'General'
+              else 'General'
+            end;
+
+            insert into public.cost_centers (name, linked_module, active)
+              values (v_cost_center, v_linked_module, true)
+              on conflict (name) do update set active = true;
+          end if;
+        end loop;
+      end if;
+    end loop;
+  end if;
 
   for v_expense in
     select value from jsonb_array_elements(p_payload -> 'expenses')
@@ -348,7 +419,8 @@ begin
         cashbox_name,
         document_number,
         detail,
-        notes
+        notes,
+        created_at
       )
       values (
         v_batch.id,
@@ -370,7 +442,12 @@ begin
         v_cashbox,
         nullif(trim(coalesce(v_commerce ->> 'document', '')), ''),
         nullif(trim(coalesce(v_commerce ->> 'detail', '')), ''),
-        nullif(trim(coalesce(v_commerce ->> 'observation', '')), '')
+        nullif(trim(coalesce(v_commerce ->> 'observation', '')), ''),
+        case
+          when coalesce(v_commerce ->> 'createdAt', '') ~ '^\d{4}-\d{2}-\d{2}T'
+            then (v_commerce ->> 'createdAt')::timestamptz
+          else now()
+        end
       );
 
       v_commerce_count := v_commerce_count + 1;
