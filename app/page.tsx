@@ -1772,7 +1772,10 @@ function FinanceModule({
 
   const cashboxesPanel = (
     <section className="panel wide">
-      <PanelHeading eyebrow="Cajas" title="Resumen de las 6 cajas" />
+      <PanelHeading
+        eyebrow="Cajas"
+        title={`Resumen de las ${cashboxes.length} cajas`}
+      />
       <div className="cashbox-grid">
         {cashboxSummaries.map((summary) => (
           <article className="cashbox-card" key={summary.cashbox}>

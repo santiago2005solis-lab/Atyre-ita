@@ -96,13 +96,17 @@ export type AppData = {
 };
 
 export const cashboxes = [
-  "Caja Ganadero Confinamiento",
-  "Caja Ganadero a Pasto",
-  "Caja Agricola",
-  "Caja Inversiones",
-  "Caja Maquinas",
+  "Caja Central",
   "Caja CDE",
+  "Caja Particular",
 ];
+
+export function isOperationalCashbox(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    cashboxes.includes(value.trim())
+  );
+}
 
 export const linkedModules: LinkedModule[] = [
   "Ganadero",
@@ -193,7 +197,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-1",
     accountName: "Venta de ganado",
-    cashboxName: "Caja Ganadero Confinamiento",
+    cashboxName: "Caja Central",
     costCenterName: "Ganadero Confinamiento",
     movementType: "ingreso",
     movementDate: "2026-07-21",
@@ -214,7 +218,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-2",
     accountName: "Alimento animal",
-    cashboxName: "Caja Ganadero Confinamiento",
+    cashboxName: "Caja Central",
     costCenterName: "Ganadero Confinamiento",
     movementType: "egreso",
     movementDate: "2026-07-20",
@@ -235,7 +239,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-3",
     accountName: "Sanidad animal",
-    cashboxName: "Caja Ganadero a Pasto",
+    cashboxName: "Caja Central",
     costCenterName: "Ganadero a Pasto",
     movementType: "egreso",
     movementDate: "2026-07-18",
@@ -256,7 +260,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-4",
     accountName: "Insumos agricolas",
-    cashboxName: "Caja Agricola",
+    cashboxName: "Caja Central",
     costCenterName: "Agricola",
     movementType: "egreso",
     movementDate: "2026-07-17",
@@ -277,7 +281,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-5",
     accountName: "Mantenimiento de maquinarias",
-    cashboxName: "Caja Maquinas",
+    cashboxName: "Caja Central",
     costCenterName: "Maquinarias",
     movementType: "egreso",
     movementDate: "2026-07-15",
@@ -298,7 +302,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
   {
     id: "fin-demo-6",
     accountName: "Transferencias internas",
-    cashboxName: "Caja Inversiones",
+    cashboxName: "Caja Central",
     costCenterName: "Inversiones",
     movementType: "transferencia",
     movementDate: "2026-07-12",
@@ -310,7 +314,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     paymentMethod: "Transferencia bancaria",
     documentNumber: "TR-0021",
     responsible: "Gerencia",
-    relatedParty: "Caja Ganadero a Pasto",
+    relatedParty: "Caja Particular",
     sourceModule: "manual",
     status: "confirmado",
     notes: "Movimiento entre cajas",

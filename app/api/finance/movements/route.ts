@@ -1,6 +1,9 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import type { FinanceMovement } from "@/lib/company-data";
+import {
+  isOperationalCashbox,
+  type FinanceMovement,
+} from "@/lib/company-data";
 import {
   financeMovementFromRow,
   financeMovementToRow,
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
 
   const payload = {
     accountName: body.accountName!,
-    cashboxName: body.cashboxName!,
+    cashboxName: body.cashboxName!.trim(),
     costCenterName: body.costCenterName!,
     movementType: body.movementType!,
     movementDate: body.movementDate!,
@@ -193,7 +196,7 @@ export async function PATCH(request: NextRequest) {
       ...currentMovement,
       accountName: movement.accountName,
       amount: Number(movement.amount),
-      cashboxName: movement.cashboxName,
+      cashboxName: movement.cashboxName.trim(),
       category: movement.category,
       concept: movement.concept.trim(),
       costObjectName: movement.costObjectName?.trim() ?? "",
@@ -431,7 +434,9 @@ export async function DELETE(request: NextRequest) {
 }
 
 function validateMovement(body: Partial<FinanceMovement>) {
-  if (!body.cashboxName) return "Seleccione una caja.";
+  if (!isOperationalCashbox(body.cashboxName)) {
+    return "Seleccione una de las tres cajas operativas.";
+  }
   if (!body.movementType) return "Seleccione el tipo de movimiento.";
   if (!body.movementDate) return "Ingrese la fecha.";
   if (!body.concept?.trim()) return "Ingrese el concepto.";

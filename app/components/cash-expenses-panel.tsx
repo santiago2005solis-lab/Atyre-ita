@@ -189,7 +189,7 @@ export function CashExpensesPanel({
   }, [period]);
 
   const accounts = mergeCatalogs(bundle.accounts, fallbackAccounts);
-  const cashboxes = mergeCatalogs(bundle.cashboxes, fallbackCashboxes);
+  const cashboxes = [...fallbackCashboxes];
   const costCenters = mergeCatalogs(
     bundle.costCenters,
     fallbackCostCenters,

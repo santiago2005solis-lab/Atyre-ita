@@ -218,12 +218,9 @@ alter table app_users enable row level security;
 alter table app_module_permissions enable row level security;
 
 insert into finance_cashboxes (name) values
-  ('Caja Ganadero Confinamiento'),
-  ('Caja Ganadero a Pasto'),
-  ('Caja Agricola'),
-  ('Caja Inversiones'),
-  ('Caja Maquinas'),
-  ('Caja CDE')
+  ('Caja Central'),
+  ('Caja CDE'),
+  ('Caja Particular')
 on conflict (name) do nothing;
 
 insert into finance_accounts (name, account_type, linked_module) values
@@ -294,7 +291,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Ganadero Confinamiento', 'Ganadero', 'Venta de ganado', 'Ganadero Confinamiento',
+  'Caja Central', 'Ganadero', 'Venta de ganado', 'Ganadero Confinamiento',
   'ingreso', date '2026-07-21', 'Venta de novillos terminados', 'Venta', 328400000,
   'Transferencia bancaria', 'FV-00128', 'Administracion', 'Frigorifico regional', 'Operacion de cierre semanal'
 where not exists (select 1 from finance_movements where document_number = 'FV-00128');
@@ -317,7 +314,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Ganadero Confinamiento', 'Ganadero', 'Alimento animal', 'Ganadero Confinamiento',
+  'Caja Central', 'Ganadero', 'Alimento animal', 'Ganadero Confinamiento',
   'egreso', date '2026-07-20', 'Compra de balanceado terminacion', 'Alimento', 68400000,
   'Transferencia bancaria', 'FC-00451', 'Compras', 'Nutricion Campo', 'Reposicion mensual'
 where not exists (select 1 from finance_movements where document_number = 'FC-00451');
@@ -340,7 +337,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Agricola', 'Agricola', 'Insumos agricolas', 'Agricola',
+  'Caja Central', 'Agricola', 'Insumos agricolas', 'Agricola',
   'egreso', date '2026-07-17', 'Semillas y fertilizante', 'Agricola', 95800000,
   'Cheque', 'FC-00439', 'Compras', 'Agroinsumos Central', 'Campana de invierno'
 where not exists (select 1 from finance_movements where document_number = 'FC-00439');

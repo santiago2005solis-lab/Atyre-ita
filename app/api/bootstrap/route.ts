@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
       itemRows,
       movementRows,
       employeeRows,
-      cashboxRows,
       accountRows,
       costCenterRows,
       warehouseRows,
@@ -49,9 +48,6 @@ export async function GET(request: NextRequest) {
         "hr_employees?select=*&order=full_name.asc",
       ),
       supabaseSelect<unknown[]>(
-        "finance_cashboxes?active=eq.true&select=name&order=name.asc",
-      ),
-      supabaseSelect<unknown[]>(
         "finance_accounts?active=eq.true&postable=eq.true&select=name&order=code.asc.nullslast,name.asc",
       ),
       supabaseSelect<unknown[]>(
@@ -66,7 +62,7 @@ export async function GET(request: NextRequest) {
       storageMode: "supabase",
       storageMessage: "Conectado a Supabase.",
       currentUser: auth.user,
-      cashboxes: mergeNames(cashboxRows, cashboxes),
+      cashboxes: [...cashboxes],
       costCenters: mergeNames(costCenterRows, costCenters),
       financeAccounts: mergeNames(accountRows, financeAccounts),
       warehouses: mergeNames(warehouseRows, warehouses),

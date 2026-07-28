@@ -15,7 +15,10 @@ import {
   supabasePatch,
   supabaseSelect,
 } from "@/lib/supabase-rest";
-import type { LinkedModule } from "@/lib/company-data";
+import {
+  isOperationalCashbox,
+  type LinkedModule,
+} from "@/lib/company-data";
 import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -373,7 +376,9 @@ function validateSettlement(body: ObligationBody) {
   if (!Number.isFinite(Number(body.amount)) || Number(body.amount) <= 0) {
     return "Ingrese un importe valido.";
   }
-  if (!clean(body.cashboxName)) return "Seleccione la caja.";
+  if (!isOperationalCashbox(clean(body.cashboxName))) {
+    return "Seleccione una de las tres cajas operativas.";
+  }
   if (!clean(body.method)) return "Seleccione el medio.";
   return "";
 }

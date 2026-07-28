@@ -10,7 +10,11 @@ import {
   type CashExpenseDocument,
   type CashExpenseStatus,
 } from "@/lib/cash-expenses";
-import type { LinkedModule } from "@/lib/company-data";
+import {
+  cashboxes,
+  isOperationalCashbox,
+  type LinkedModule,
+} from "@/lib/company-data";
 import { hasPermission } from "@/lib/permissions";
 import {
   isSupabaseConfigured,
@@ -149,10 +153,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: payloadError }, { status: 400 });
       }
 
-      const normalizedPayload = body.payload as Record<string, unknown>;
+      const sourcePayload = body.payload as Record<string, unknown>;
       const fingerprint = createHash("sha256")
-        .update(JSON.stringify(normalizedPayload))
+        .update(JSON.stringify(sourcePayload))
         .digest("hex");
+      const normalizedPayload = normalizeLegacyCashboxes(sourcePayload);
       const result = await supabaseInsert<
         Record<string, unknown> | Record<string, unknown>[]
       >(
@@ -185,7 +190,10 @@ export async function POST(request: NextRequest) {
       {
         p_allocations: body.allocations,
         p_created_by_name: auth.user.fullName,
-        p_document: body.document,
+        p_document: {
+          ...body.document,
+          cashboxName: clean(body.document?.cashboxName),
+        },
       },
     );
     return NextResponse.json(
@@ -362,7 +370,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (body.action === "update_document") {
-      if (!body.documentId || !clean(body.update?.cashboxName)) {
+      if (
+        !body.documentId ||
+        !isOperationalCashbox(clean(body.update?.cashboxName))
+      ) {
         return NextResponse.json(
           { error: "Seleccione la caja que afectara el comprobante." },
           { status: 400 },
@@ -565,7 +576,9 @@ function validateCreateBody(body: CashExpenseBody) {
   if (!body.document || !isDate(body.document.documentDate)) {
     return "Ingrese una fecha valida.";
   }
-  if (!clean(body.document.cashboxName)) return "Seleccione una caja.";
+  if (!isOperationalCashbox(clean(body.document.cashboxName))) {
+    return "Seleccione una de las tres cajas operativas.";
+  }
   if (!clean(body.document.description)) return "Ingrese una descripcion.";
   if (!Array.isArray(body.allocations) || !body.allocations.length) {
     return "Agregue al menos una distribucion.";
@@ -581,6 +594,57 @@ function validateCreateBody(body: CashExpenseBody) {
     }
   }
   return null;
+}
+
+function normalizeLegacyCashboxes(payload: Record<string, unknown>) {
+  const normalized = structuredClone(payload);
+  if (Array.isArray(normalized.expenses)) {
+    normalized.expenses = normalized.expenses.map((expense) => {
+      if (!isRecord(expense)) return expense;
+      const originalCashbox = clean(expense.cajaOrigen);
+      const cashboxName = normalizeCashboxName(originalCashbox);
+      const observation = clean(expense.observacion);
+      return {
+        ...expense,
+        cajaOrigen: cashboxName,
+        observacion:
+          originalCashbox && originalCashbox !== cashboxName
+            ? [observation, `Caja original importada: ${originalCashbox}`]
+                .filter(Boolean)
+                .join(" | ")
+            : observation,
+      };
+    });
+  }
+  if (Array.isArray(normalized.commerceRecords)) {
+    normalized.commerceRecords = normalized.commerceRecords.map((record) =>
+      isRecord(record) && clean(record.cashbox)
+        ? { ...record, cashbox: normalizeCashboxName(record.cashbox) }
+        : record,
+    );
+  }
+  if (isRecord(normalized.tables)) {
+    normalized.tables = {
+      ...normalized.tables,
+      cashboxes: [...cashboxes],
+    };
+  }
+  return normalized;
+}
+
+function normalizeCashboxName(value: unknown) {
+  const normalized = clean(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (normalized.includes("cde")) return "Caja CDE";
+  if (
+    normalized.includes("oviedo") ||
+    normalized.includes("particular")
+  ) {
+    return "Caja Particular";
+  }
+  return "Caja Central";
 }
 
 function cashExpenseError(error: unknown) {
