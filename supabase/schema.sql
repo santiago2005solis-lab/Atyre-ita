@@ -243,18 +243,15 @@ insert into finance_accounts (name, account_type, linked_module) values
 on conflict (name) do nothing;
 
 insert into cost_centers (name, linked_module) values
-  ('Ganadero Confinamiento', 'Ganadero'),
-  ('Ganadero a Pasto', 'Ganadero'),
-  ('Agricola', 'Agricola'),
-  ('Maquinarias', 'Maquinarias'),
-  ('Recursos Humanos', 'Recursos Humanos'),
-  ('Deposito Capitan', 'Deposito'),
-  ('Deposito Villagra', 'Deposito'),
-  ('Deposito Confinamiento 15 HAS', 'Deposito'),
-  ('Confinamiento 500 HAS', 'Deposito'),
-  ('Administracion CDE', 'General'),
+  ('Confinamiento 15 HAS', 'Ganadero'),
+  ('Confinamiento 500 HAS', 'Ganadero'),
+  ('Pastoreo Capitan', 'Ganadero'),
+  ('Pastoreo Villagra', 'Ganadero'),
+  ('Pastoreo Alonso', 'Ganadero'),
   ('Inversiones', 'Financiero'),
-  ('General', 'General')
+  ('Agricola Capiazu', 'Agricola'),
+  ('Agricola Brizantha', 'Agricola'),
+  ('Administracion', 'Financiero')
 on conflict (name) do nothing;
 
 insert into inventory_warehouses (name) values
@@ -291,7 +288,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Central', 'Ganadero', 'Venta de ganado', 'Ganadero Confinamiento',
+  'Caja Central', 'Ganadero', 'Venta de ganado', 'Confinamiento 15 HAS',
   'ingreso', date '2026-07-21', 'Venta de novillos terminados', 'Venta', 328400000,
   'Transferencia bancaria', 'FV-00128', 'Administracion', 'Frigorifico regional', 'Operacion de cierre semanal'
 where not exists (select 1 from finance_movements where document_number = 'FV-00128');
@@ -314,7 +311,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Central', 'Ganadero', 'Alimento animal', 'Ganadero Confinamiento',
+  'Caja Central', 'Ganadero', 'Alimento animal', 'Confinamiento 15 HAS',
   'egreso', date '2026-07-20', 'Compra de balanceado terminacion', 'Alimento', 68400000,
   'Transferencia bancaria', 'FC-00451', 'Compras', 'Nutricion Campo', 'Reposicion mensual'
 where not exists (select 1 from finance_movements where document_number = 'FC-00451');
@@ -337,7 +334,7 @@ insert into finance_movements
     notes
   )
 select
-  'Caja Central', 'Agricola', 'Insumos agricolas', 'Agricola',
+  'Caja Central', 'Agricola', 'Insumos agricolas', 'Agricola Capiazu',
   'egreso', date '2026-07-17', 'Semillas y fertilizante', 'Agricola', 95800000,
   'Cheque', 'FC-00439', 'Compras', 'Agroinsumos Central', 'Campana de invierno'
 where not exists (select 1 from finance_movements where document_number = 'FC-00439');

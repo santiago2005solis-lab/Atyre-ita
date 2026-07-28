@@ -700,6 +700,11 @@ button:disabled {
   font-weight: 850;
 }
 
+.finance-list-card small {
+  display: block;
+  margin-top: 3px;
+}
+
 .finance-list-card span {
   display: block;
   font-size: 0.78rem;

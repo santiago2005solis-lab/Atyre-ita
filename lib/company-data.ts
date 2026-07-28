@@ -14,6 +14,14 @@ export type LinkedModule =
   | "General";
 export type InventoryMovementType = "entrada" | "salida" | "traslado" | "ajuste";
 
+export type CostCenterDefinition = {
+  code: string;
+  description: string;
+  linkedModule: LinkedModule;
+  name: string;
+  type: "administrativo" | "agricola" | "ganadero" | "inversion";
+};
+
 export type FinanceMovement = {
   id: string;
   accountName: string;
@@ -137,20 +145,80 @@ export const financeAccounts = [
   "Otros",
 ];
 
-export const costCenters = [
-  "Ganadero Confinamiento",
-  "Ganadero a Pasto",
-  "Agricola",
-  "Maquinarias",
-  "Recursos Humanos",
-  "Deposito Capitan",
-  "Deposito Villagra",
-  "Deposito Confinamiento 15 HAS",
-  "Confinamiento 500 HAS",
-  "Administracion CDE",
-  "Inversiones",
-  "General",
+export const costCenterCatalog: CostCenterDefinition[] = [
+  {
+    code: "GAN-CONF-15",
+    description: "Produccion ganadera del confinamiento de 15 HAS",
+    linkedModule: "Ganadero",
+    name: "Confinamiento 15 HAS",
+    type: "ganadero",
+  },
+  {
+    code: "GAN-CONF-500",
+    description: "Produccion ganadera del confinamiento de 500 HAS",
+    linkedModule: "Ganadero",
+    name: "Confinamiento 500 HAS",
+    type: "ganadero",
+  },
+  {
+    code: "GAN-PAS-CAP",
+    description: "Produccion ganadera a pasto del sector Capitan",
+    linkedModule: "Ganadero",
+    name: "Pastoreo Capitan",
+    type: "ganadero",
+  },
+  {
+    code: "GAN-PAS-VIL",
+    description: "Produccion ganadera a pasto del sector Villagra",
+    linkedModule: "Ganadero",
+    name: "Pastoreo Villagra",
+    type: "ganadero",
+  },
+  {
+    code: "GAN-PAS-ALO",
+    description: "Produccion ganadera a pasto del sector Alonso",
+    linkedModule: "Ganadero",
+    name: "Pastoreo Alonso",
+    type: "ganadero",
+  },
+  {
+    code: "INV-GRAL",
+    description: "Obras, maquinarias e inversiones de capital",
+    linkedModule: "Financiero",
+    name: "Inversiones",
+    type: "inversion",
+  },
+  {
+    code: "AGR-CAP",
+    description: "Produccion agricola del sector Capiazu",
+    linkedModule: "Agricola",
+    name: "Agricola Capiazu",
+    type: "agricola",
+  },
+  {
+    code: "AGR-BRI",
+    description: "Produccion agricola del sector Brizantha",
+    linkedModule: "Agricola",
+    name: "Agricola Brizantha",
+    type: "agricola",
+  },
+  {
+    code: "ADM-GRAL",
+    description: "Administracion, personal y gastos generales",
+    linkedModule: "Financiero",
+    name: "Administracion",
+    type: "administrativo",
+  },
 ];
+
+export const costCenters = costCenterCatalog.map((center) => center.name);
+
+export function isOperationalCostCenter(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    costCenters.includes(value.trim())
+  );
+}
 
 export const warehouses = [
   "Deposito Capitan",
@@ -198,7 +266,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     id: "fin-demo-1",
     accountName: "Venta de ganado",
     cashboxName: "Caja Central",
-    costCenterName: "Ganadero Confinamiento",
+    costCenterName: "Confinamiento 15 HAS",
     movementType: "ingreso",
     movementDate: "2026-07-21",
     concept: "Venta de novillos terminados",
@@ -219,7 +287,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     id: "fin-demo-2",
     accountName: "Alimento animal",
     cashboxName: "Caja Central",
-    costCenterName: "Ganadero Confinamiento",
+    costCenterName: "Confinamiento 15 HAS",
     movementType: "egreso",
     movementDate: "2026-07-20",
     concept: "Compra de balanceado terminacion",
@@ -240,7 +308,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     id: "fin-demo-3",
     accountName: "Sanidad animal",
     cashboxName: "Caja Central",
-    costCenterName: "Ganadero a Pasto",
+    costCenterName: "Pastoreo Capitan",
     movementType: "egreso",
     movementDate: "2026-07-18",
     concept: "Vacunas y antiparasitario",
@@ -261,7 +329,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     id: "fin-demo-4",
     accountName: "Insumos agricolas",
     cashboxName: "Caja Central",
-    costCenterName: "Agricola",
+    costCenterName: "Agricola Capiazu",
     movementType: "egreso",
     movementDate: "2026-07-17",
     concept: "Semillas y fertilizante",
@@ -282,7 +350,7 @@ export const demoFinanceMovements: FinanceMovement[] = [
     id: "fin-demo-5",
     accountName: "Mantenimiento de maquinarias",
     cashboxName: "Caja Central",
-    costCenterName: "Maquinarias",
+    costCenterName: "Agricola Capiazu",
     movementType: "egreso",
     movementDate: "2026-07-15",
     concept: "Mantenimiento de tractor",

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   isOperationalCashbox,
+  isOperationalCostCenter,
   type FinanceMovement,
 } from "@/lib/company-data";
 import {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
   const payload = {
     accountName: body.accountName!,
     cashboxName: body.cashboxName!.trim(),
-    costCenterName: body.costCenterName!,
+    costCenterName: body.costCenterName!.trim(),
     movementType: body.movementType!,
     movementDate: body.movementDate!,
     concept: body.concept!.trim(),
@@ -442,7 +443,9 @@ function validateMovement(body: Partial<FinanceMovement>) {
   if (!body.concept?.trim()) return "Ingrese el concepto.";
   if (!body.category) return "Seleccione una categoria.";
   if (!body.accountName) return "Seleccione una cuenta contable.";
-  if (!body.costCenterName) return "Seleccione un centro de costo.";
+  if (!isOperationalCostCenter(body.costCenterName)) {
+    return "Seleccione uno de los nueve centros de costo operativos.";
+  }
   if (!body.linkedModule) return "Seleccione el modulo vinculado.";
   if (!Number.isFinite(Number(body.amount)) || Number(body.amount) <= 0) {
     return "Ingrese un monto valido.";

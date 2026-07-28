@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   cashboxes,
+  costCenterCatalog,
   demoData,
   linkedModules,
   financeCategories,
@@ -1412,12 +1413,22 @@ function FinanceModule({
       confirmedMovements.filter((movement) => movement.accountName === account),
     ),
   }));
-  const costCenterSummaries = costCenters.map((costCenter) => ({
-    label: costCenter,
-    ...summarizeMovements(
-      confirmedMovements.filter((movement) => movement.costCenterName === costCenter),
-    ),
-  }));
+  const costCenterSummaries = costCenters.map((costCenter) => {
+    const definition = costCenterCatalog.find(
+      (center) => center.name === costCenter,
+    );
+    return {
+      code: definition?.code ?? "SIN-COD",
+      description: definition?.description ?? "Centro de costo operativo",
+      label: costCenter,
+      linkedModule: definition?.linkedModule ?? "General",
+      ...summarizeMovements(
+        confirmedMovements.filter(
+          (movement) => movement.costCenterName === costCenter,
+        ),
+      ),
+    };
+  });
 
   const movementFormPanel = (
     <section className="panel movement-entry-panel">
@@ -2107,8 +2118,11 @@ function FinanceModule({
             {costCenterSummaries.map((summary) => (
               <article className="finance-list-card" key={summary.label}>
                 <div>
-                  <span>Centro</span>
+                  <span>
+                    {summary.code} · {summary.linkedModule}
+                  </span>
                   <strong>{summary.label}</strong>
+                  <small>{summary.description}</small>
                   <small>{summary.count} movimientos activos</small>
                 </div>
                 <dl>

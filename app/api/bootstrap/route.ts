@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
       movementRows,
       employeeRows,
       accountRows,
-      costCenterRows,
       warehouseRows,
     ] = await Promise.all([
       supabaseSelect<unknown[]>(
@@ -51,9 +50,6 @@ export async function GET(request: NextRequest) {
         "finance_accounts?active=eq.true&postable=eq.true&select=name&order=code.asc.nullslast,name.asc",
       ),
       supabaseSelect<unknown[]>(
-        "cost_centers?active=eq.true&select=name&order=name.asc",
-      ),
-      supabaseSelect<unknown[]>(
         "inventory_warehouses?active=eq.true&select=name&order=name.asc",
       ),
     ]);
@@ -63,7 +59,7 @@ export async function GET(request: NextRequest) {
       storageMessage: "Conectado a Supabase.",
       currentUser: auth.user,
       cashboxes: [...cashboxes],
-      costCenters: mergeNames(costCenterRows, costCenters),
+      costCenters: [...costCenters],
       financeAccounts: mergeNames(accountRows, financeAccounts),
       warehouses: mergeNames(warehouseRows, warehouses),
       financeMovements: financeRows.map((row) => financeMovementFromRow(row as never)),

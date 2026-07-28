@@ -17,6 +17,7 @@ import {
 } from "@/lib/supabase-rest";
 import {
   isOperationalCashbox,
+  isOperationalCostCenter,
   type LinkedModule,
 } from "@/lib/company-data";
 import { hasPermission } from "@/lib/permissions";
@@ -367,7 +368,9 @@ function validateObligation(body: ObligationBody) {
   }
   if (!body.linkedModule) return "Seleccione el modulo.";
   if (!clean(body.accountName)) return "Seleccione la cuenta contable.";
-  if (!clean(body.costCenterName)) return "Seleccione el centro de costo.";
+  if (!isOperationalCostCenter(clean(body.costCenterName))) {
+    return "Seleccione uno de los nueve centros de costo operativos.";
+  }
   return "";
 }
 

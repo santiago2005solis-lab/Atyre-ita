@@ -12,7 +12,9 @@ import {
 } from "@/lib/cash-expenses";
 import {
   cashboxes,
+  costCenters,
   isOperationalCashbox,
+  isOperationalCostCenter,
   type LinkedModule,
 } from "@/lib/company-data";
 import { hasPermission } from "@/lib/permissions";
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
       const fingerprint = createHash("sha256")
         .update(JSON.stringify(sourcePayload))
         .digest("hex");
-      const normalizedPayload = normalizeLegacyCashboxes(sourcePayload);
+      const normalizedPayload = normalizeLegacyFinancePayload(sourcePayload);
       const result = await supabaseInsert<
         Record<string, unknown> | Record<string, unknown>[]
       >(
@@ -245,7 +247,7 @@ export async function PATCH(request: NextRequest) {
         !body.update ||
         !isLinkedModule(body.update.linkedModule) ||
         !clean(body.update.accountName) ||
-        !clean(body.update.costCenterName) ||
+        !isOperationalCostCenter(clean(body.update.costCenterName)) ||
         !isPositiveNumber(body.update.amount)
       ) {
         return NextResponse.json(
@@ -340,7 +342,7 @@ export async function PATCH(request: NextRequest) {
         !body.update ||
         !isLinkedModule(body.update.linkedModule) ||
         !clean(body.update.accountName) ||
-        !clean(body.update.costCenterName) ||
+        !isOperationalCostCenter(clean(body.update.costCenterName)) ||
         !isPositiveNumber(body.update.amount)
       ) {
         return NextResponse.json(
@@ -477,7 +479,6 @@ async function loadCashExpenseBundle(period: string) {
     cashboxRows,
     cashboxBalanceRows,
     accountRows,
-    costCenterRows,
   ] = await Promise.all([
       supabaseSelect<Record<string, unknown>[]>(
         "finance_import_batches?select=*&order=created_at.desc&limit=10",
@@ -493,9 +494,6 @@ async function loadCashExpenseBundle(period: string) {
       ),
       supabaseSelect<Record<string, unknown>[]>(
         "finance_accounts?active=eq.true&postable=eq.true&select=name&order=code.asc.nullslast,name.asc",
-      ),
-      supabaseSelect<Record<string, unknown>[]>(
-        "cost_centers?active=eq.true&select=name&order=name.asc",
       ),
     ]);
 
@@ -524,7 +522,7 @@ async function loadCashExpenseBundle(period: string) {
     commerceRecords: commerceRows.map((row) =>
       importedCommerceRecordFromRow(row as never),
     ),
-    costCenters: costCenterRows.map((row) => clean(row.name)).filter(Boolean),
+    costCenters: [...costCenters],
     documents: documents.map((document) => ({
       ...document,
       allocations: allocationsByDocument.get(document.id) ?? [],
@@ -588,7 +586,7 @@ function validateCreateBody(body: CashExpenseBody) {
       !isPositiveNumber(allocation.amount) ||
       !isLinkedModule(allocation.linkedModule) ||
       !clean(allocation.accountName) ||
-      !clean(allocation.costCenterName)
+      !isOperationalCostCenter(clean(allocation.costCenterName))
     ) {
       return "Complete correctamente todas las distribuciones.";
     }
@@ -596,7 +594,7 @@ function validateCreateBody(body: CashExpenseBody) {
   return null;
 }
 
-function normalizeLegacyCashboxes(payload: Record<string, unknown>) {
+function normalizeLegacyFinancePayload(payload: Record<string, unknown>) {
   const normalized = structuredClone(payload);
   if (Array.isArray(normalized.expenses)) {
     normalized.expenses = normalized.expenses.map((expense) => {
@@ -606,6 +604,31 @@ function normalizeLegacyCashboxes(payload: Record<string, unknown>) {
       const observation = clean(expense.observacion);
       return {
         ...expense,
+        allocations: Array.isArray(expense.allocations)
+          ? expense.allocations.map((allocation) => {
+              if (!isRecord(allocation)) return allocation;
+              const originalCostCenter = clean(allocation.subcategory);
+              const normalizedCostCenter = normalizeCostCenterName(
+                allocation.subcategory,
+                allocation.category,
+              );
+              const detail = clean(allocation.detail);
+              return {
+                ...allocation,
+                detail:
+                  originalCostCenter &&
+                  originalCostCenter !== normalizedCostCenter
+                    ? [
+                        detail,
+                        `Centro original importado: ${originalCostCenter}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" | ")
+                    : detail,
+                subcategory: normalizedCostCenter,
+              };
+            })
+          : expense.allocations,
         cajaOrigen: cashboxName,
         observacion:
           originalCashbox && originalCashbox !== cashboxName
@@ -627,6 +650,7 @@ function normalizeLegacyCashboxes(payload: Record<string, unknown>) {
     normalized.tables = {
       ...normalized.tables,
       cashboxes: [...cashboxes],
+      costCenters: [...costCenters],
     };
   }
   return normalized;
@@ -645,6 +669,72 @@ function normalizeCashboxName(value: unknown) {
     return "Caja Particular";
   }
   return "Caja Central";
+}
+
+function normalizeCostCenterName(value: unknown, category: unknown) {
+  const normalized = normalizeCatalogValue(value);
+  const normalizedCategory = normalizeCatalogValue(category);
+
+  if (
+    normalized === "confinamiento 15 has" ||
+    normalized === "ganadero confinamiento" ||
+    normalized === "deposito confinamiento 15 has" ||
+    normalized === "otro ganadero"
+  ) {
+    return "Confinamiento 15 HAS";
+  }
+  if (
+    normalized === "confinamiento 500 has" ||
+    normalized === "deposito confinamiento 500 has"
+  ) {
+    return "Confinamiento 500 HAS";
+  }
+  if (
+    normalized === "capitan" ||
+    normalized === "carayao" ||
+    normalized === "ganadero a pasto" ||
+    normalized === "deposito capitan"
+  ) {
+    return "Pastoreo Capitan";
+  }
+  if (normalized === "villagra" || normalized === "deposito villagra") {
+    return "Pastoreo Villagra";
+  }
+  if (normalized === "alonso") return "Pastoreo Alonso";
+  if (normalized === "brizantha" || normalized === "agricola brizantha") {
+    return "Agricola Brizantha";
+  }
+  if (
+    normalized === "capiazu" ||
+    normalized === "agricola capiazu" ||
+    normalized === "agricola" ||
+    normalized === "otro agricola"
+  ) {
+    return "Agricola Capiazu";
+  }
+  if (
+    normalizedCategory === "inversion" ||
+    [
+      "construcciones",
+      "eucalipto",
+      "infraestructura",
+      "inversiones",
+      "maquinarias",
+      "otro inversion",
+    ].includes(normalized)
+  ) {
+    return "Inversiones";
+  }
+  if (normalizedCategory === "ganadero") return "Confinamiento 15 HAS";
+  if (normalizedCategory === "agricola") return "Agricola Capiazu";
+  return "Administracion";
+}
+
+function normalizeCatalogValue(value: unknown) {
+  return clean(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function cashExpenseError(error: unknown) {
