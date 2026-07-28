@@ -25,7 +25,7 @@ import {
   hasPermission,
   type AppModule,
 } from "@/lib/permissions";
-import { FinanceExampleCleanup } from "@/app/components/finance-example-cleanup";
+import { FinanceRecordMaintenance } from "@/app/components/finance-example-cleanup";
 import { FinanceObligationsPanel } from "@/app/components/finance-obligations-panel";
 import { CashExpensesPanel } from "@/app/components/cash-expenses-panel";
 import { HumanResourcesModule } from "@/app/components/human-resources-module";
@@ -596,7 +596,7 @@ export default function AppPage() {
     }
   }
 
-  function removeFinanceExampleMovements(movementIds: string[]) {
+  function removeFinanceMovements(movementIds: string[]) {
     setData((current) => ({
       ...current,
       financeMovements: current.financeMovements.filter(
@@ -606,8 +606,18 @@ export default function AppPage() {
     setStatusMessage(
       `${movementIds.length} registro${
         movementIds.length === 1 ? "" : "s"
-      } de ejemplo eliminado${movementIds.length === 1 ? "" : "s"}.`,
+      } eliminado${movementIds.length === 1 ? "" : "s"}.`,
     );
+  }
+
+  function replaceFinanceMovement(updatedMovement: FinanceMovement) {
+    setData((current) => ({
+      ...current,
+      financeMovements: current.financeMovements.map((movement) =>
+        movement.id === updatedMovement.id ? updatedMovement : movement,
+      ),
+    }));
+    setStatusMessage("Registro financiero actualizado.");
   }
 
   async function submitInventoryItem(event: FormEvent<HTMLFormElement>) {
@@ -867,7 +877,8 @@ export default function AppPage() {
             financeMovements={data.financeMovements}
             financeReport={financeReport}
             money={money}
-            onExampleMovementsDeleted={removeFinanceExampleMovements}
+            onMovementsDeleted={removeFinanceMovements}
+            onMovementUpdated={replaceFinanceMovement}
             refreshFinanceMovements={refreshFinanceMovements}
             saving={saving}
             selectedCashbox={selectedCashbox}
@@ -1259,7 +1270,8 @@ function FinanceModule({
   financeMovements,
   financeReport,
   money,
-  onExampleMovementsDeleted,
+  onMovementsDeleted,
+  onMovementUpdated,
   refreshFinanceMovements,
   saving,
   selectedCashbox,
@@ -1303,7 +1315,8 @@ function FinanceModule({
     workflow: FinanceMovement[];
   };
   money: (value: number) => string;
-  onExampleMovementsDeleted: (movementIds: string[]) => void;
+  onMovementsDeleted: (movementIds: string[]) => void;
+  onMovementUpdated: (movement: FinanceMovement) => void;
   refreshFinanceMovements: () => Promise<void>;
   saving: SavingTarget;
   selectedCashbox: string;
@@ -2172,11 +2185,15 @@ function FinanceModule({
               ))}
             </div>
           </section>
-          <FinanceExampleCleanup
+          <FinanceRecordMaintenance
             canAdmin={canApprove}
+            cashboxes={cashboxes}
+            costCenters={costCenters}
+            financeAccounts={financeAccounts}
             money={money}
             movements={financeMovements}
-            onDeleted={onExampleMovementsDeleted}
+            onDeleted={onMovementsDeleted}
+            onUpdated={onMovementUpdated}
           />
           {cashboxesPanel}
         </div>

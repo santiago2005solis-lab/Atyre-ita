@@ -780,6 +780,33 @@ button:disabled {
   font-size: 0.74rem !important;
 }
 
+.finance-maintenance-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.finance-maintenance-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.8fr) repeat(2, minmax(160px, 0.8fr)) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.finance-maintenance-filters label {
+  display: grid;
+  gap: 6px;
+}
+
+.finance-maintenance-filters .secondary-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
 .finance-example-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -828,7 +855,7 @@ button:disabled {
 }
 
 .finance-example-table table {
-  min-width: 920px;
+  min-width: 1160px;
 }
 
 .finance-example-table th:first-child,
@@ -838,11 +865,14 @@ button:disabled {
 }
 
 .finance-example-table td:nth-child(3) strong,
-.finance-example-table td:nth-child(3) small {
+.finance-example-table td:nth-child(3) small,
+.finance-example-table td:nth-child(5) strong,
+.finance-example-table td:nth-child(5) small {
   display: block;
 }
 
-.finance-example-table td:nth-child(3) small {
+.finance-example-table td:nth-child(3) small,
+.finance-example-table td:nth-child(5) small {
   margin-top: 3px;
   color: var(--muted);
   font-size: 0.7rem;
@@ -861,8 +891,67 @@ button:disabled {
   text-align: center !important;
 }
 
+.finance-source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--green-pale);
+  color: var(--green-deep);
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .finance-cleanup-modal {
   width: min(560px, 100%);
+}
+
+.finance-record-edit-modal {
+  width: min(900px, 100%);
+}
+
+.finance-record-edit-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.finance-record-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.finance-record-context span {
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--green-pale);
+  color: var(--green-deep);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.finance-record-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.finance-record-form-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.finance-record-form-grid .wide-field {
+  grid-column: span 2;
+}
+
+.finance-record-form-grid textarea {
+  min-height: 84px;
+  resize: vertical;
 }
 
 .finance-cleanup-confirmation {
@@ -5041,6 +5130,15 @@ th:last-child {
 
   .finance-example-toolbar .danger-button {
     flex: 1 1 180px;
+  }
+
+  .finance-maintenance-filters,
+  .finance-record-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-record-form-grid .wide-field {
+    grid-column: auto;
   }
 
   .finance-cleanup-summary {

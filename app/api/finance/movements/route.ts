@@ -14,7 +14,6 @@ import {
   supabaseSelect,
 } from "@/lib/supabase-rest";
 import { hasPermission } from "@/lib/permissions";
-import { isExampleFinanceMovement } from "@/lib/finance-examples";
 
 export const dynamic = "force-dynamic";
 
@@ -121,9 +120,92 @@ export async function PATCH(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = (await request.json()) as {
+    action?: "edit";
     id?: string;
+    movement?: FinanceMovement;
     status?: FinanceMovement["status"];
   };
+  const canApprove = hasPermission(
+    auth.user ?? undefined,
+    "financiero",
+    "administrador",
+  );
+
+  if (body.action === "edit") {
+    if (!canApprove) {
+      return NextResponse.json(
+        { error: "Se requiere permiso de administrador para editar registros." },
+        { status: 403 },
+      );
+    }
+
+    const movement = body.movement;
+    const validationError = movement ? validateMovement(movement) : "Movimiento no valido.";
+
+    if (
+      !movement?.id ||
+      !isUuid(movement.id) ||
+      validationError
+    ) {
+      return NextResponse.json(
+        { error: validationError ?? "Movimiento no valido." },
+        { status: 400 },
+      );
+    }
+
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({
+        movement,
+        storageMode: "demo",
+      });
+    }
+
+    const currentRows = await supabaseSelect<unknown[]>(
+      `finance_movements?id=eq.${encodeURIComponent(movement.id)}&select=*&limit=1`,
+    );
+    const currentMovement = currentRows[0]
+      ? financeMovementFromRow(currentRows[0] as never)
+      : null;
+
+    if (!currentMovement) {
+      return NextResponse.json(
+        { error: "Movimiento no encontrado." },
+        { status: 404 },
+      );
+    }
+
+    const editableMovement = {
+      ...currentMovement,
+      accountName: movement.accountName,
+      amount: Number(movement.amount),
+      cashboxName: movement.cashboxName,
+      category: movement.category,
+      concept: movement.concept.trim(),
+      costObjectName: movement.costObjectName?.trim() ?? "",
+      costCenterName: movement.costCenterName,
+      currency: "PYG" as const,
+      documentNumber: movement.documentNumber?.trim() ?? "",
+      linkedModule: movement.linkedModule,
+      movementDate: movement.movementDate,
+      movementType: movement.movementType,
+      notes: movement.notes?.trim() ?? "",
+      paymentMethod: movement.paymentMethod?.trim() ?? "",
+      relatedParty: movement.relatedParty?.trim() ?? "",
+      responsible: movement.responsible?.trim() ?? "",
+      sourceModule: currentMovement.sourceModule,
+      status: currentMovement.status,
+    };
+    const rows = await supabasePatch<unknown[]>(
+      `finance_movements?id=eq.${encodeURIComponent(movement.id)}`,
+      financeMovementToRow(editableMovement),
+    );
+
+    return NextResponse.json({
+      movement: financeMovementFromRow(rows[0] as never),
+      storageMode: "supabase",
+    });
+  }
+
   const allowedStatuses: FinanceMovement["status"][] = [
     "borrador",
     "pendiente",
@@ -134,12 +216,6 @@ export async function PATCH(request: NextRequest) {
   if (!body.id || !body.status || !allowedStatuses.includes(body.status)) {
     return NextResponse.json({ error: "Movimiento o estado no valido." }, { status: 400 });
   }
-
-  const canApprove = hasPermission(
-    auth.user ?? undefined,
-    "financiero",
-    "administrador",
-  );
 
   if (
     (body.status === "confirmado" || body.status === "anulado") &&
@@ -275,9 +351,9 @@ export async function DELETE(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (!ids.length || ids.length > 20) {
+  if (!ids.length || ids.length > 50) {
     return NextResponse.json(
-      { error: "Seleccione entre 1 y 20 registros de ejemplo." },
+      { error: "Seleccione entre 1 y 50 registros." },
       { status: 400 },
     );
   }
@@ -304,13 +380,25 @@ export async function DELETE(request: NextRequest) {
       { status: 409 },
     );
   }
-  if (movements.some((movement) => !isExampleFinanceMovement(movement))) {
+  const movementIds = movements.map((movement) => movement.id);
+  const allocationLinks = await supabaseSelect<Array<{ movement_id: string }>>(
+    `finance_cash_expense_allocations?movement_id=in.(${movementIds.join(
+      ",",
+    )})&select=movement_id`,
+  );
+  const obligationLinks = await supabaseSelect<Array<{ movement_id: string }>>(
+    `finance_obligation_settlements?movement_id=in.(${movementIds.join(
+      ",",
+    )})&select=movement_id`,
+  );
+
+  if (allocationLinks.length || obligationLinks.length) {
     return NextResponse.json(
       {
         error:
-          "La seleccion contiene un movimiento que no fue creado como ejemplo.",
+          "Uno de los registros esta vinculado a un comprobante o una cuenta. Anule o elimine primero el registro desde su bloque de origen.",
       },
-      { status: 403 },
+      { status: 409 },
     );
   }
 
