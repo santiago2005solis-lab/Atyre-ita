@@ -5544,6 +5544,81 @@ th:last-child {
   background: #fbfcfb;
 }
 
+.cashbox-impact {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.4fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #b8cec0;
+  border-radius: 8px;
+  background: #f2f8f3;
+}
+
+.cashbox-impact-editor {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cashbox-impact-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cashbox-impact-title strong {
+  font-size: 0.78rem;
+}
+
+.cashbox-impact-title small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.cashbox-impact-editor select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cashbox-impact-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.cashbox-impact-values > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.cashbox-impact-values dt {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cashbox-impact-values dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .cash-expense-metadata {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.65fr);
@@ -5605,12 +5680,13 @@ th:last-child {
   display: grid;
   grid-template-columns:
     minmax(180px, 1.25fr)
-    minmax(140px, 0.85fr)
-    minmax(155px, 1fr)
+    minmax(135px, 0.8fr)
+    minmax(160px, 1fr)
     minmax(165px, 1fr)
-    minmax(110px, 0.7fr)
+    minmax(165px, 1fr)
+    minmax(105px, 0.65fr)
     minmax(105px, 0.65fr);
-  min-width: 980px;
+  min-width: 1160px;
   align-items: center;
   gap: 8px;
   padding: 9px 11px;
@@ -5629,7 +5705,8 @@ th:last-child {
   border-top: 1px solid var(--line);
 }
 
-.cash-allocation-row select {
+.cash-allocation-row select,
+.cash-allocation-row input {
   width: 100%;
   min-width: 0;
   min-height: 36px;
@@ -5771,6 +5848,7 @@ th:last-child {
   grid-template-columns:
     minmax(135px, 0.8fr)
     minmax(150px, 1fr)
+    minmax(165px, 1fr)
     minmax(165px, 1fr)
     minmax(170px, 1.2fr)
     minmax(115px, 0.7fr)
@@ -6042,16 +6120,12 @@ th:last-child {
   }
 
   .entry-allocation-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) 36px;
-  }
-
-  .entry-allocation-row label:nth-child(5) {
-    grid-column: 1 / 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .entry-allocation-row .icon-button {
-    grid-column: 3;
-    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
   }
 }
 
@@ -6089,6 +6163,10 @@ th:last-child {
   }
 
   .cash-expense-metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .cashbox-impact {
     grid-template-columns: 1fr;
   }
 
@@ -6192,6 +6270,15 @@ th:last-child {
     padding: 12px;
   }
 
+  .cashbox-impact {
+    padding: 10px;
+  }
+
+  .cashbox-impact-editor,
+  .cashbox-impact-values {
+    grid-template-columns: 1fr;
+  }
+
   .cash-allocation-table,
   .commerce-table {
     overflow: visible;
@@ -6241,7 +6328,7 @@ th:last-child {
   }
 
   .entry-allocation-row {
-    grid-template-columns: 1fr 36px;
+    grid-template-columns: 1fr;
   }
 
   .entry-allocation-row label {
@@ -6249,8 +6336,9 @@ th:last-child {
   }
 
   .entry-allocation-row .icon-button {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: end;
   }
 
   .import-preview-grid {

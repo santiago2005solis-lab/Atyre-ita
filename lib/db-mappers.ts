@@ -10,6 +10,7 @@ type FinanceMovementRow = {
   cashbox_name: string;
   category: string;
   concept: string;
+  cost_object_name?: string | null;
   cost_center_name?: string | null;
   created_at: string;
   currency: "PYG";
@@ -60,6 +61,7 @@ export function financeMovementFromRow(row: FinanceMovementRow): FinanceMovement
     id: row.id,
     accountName: row.account_name ?? row.category,
     cashboxName: row.cashbox_name,
+    costObjectName: row.cost_object_name ?? "",
     costCenterName: row.cost_center_name ?? "General",
     movementType: row.movement_type,
     movementDate: row.movement_date,
@@ -90,6 +92,7 @@ export function financeMovementToRow(
     category: movement.category,
     account_name: movement.accountName,
     amount: movement.amount,
+    cost_object_name: movement.costObjectName ?? null,
     cost_center_name: movement.costCenterName,
     currency: movement.currency,
     linked_module: movement.linkedModule,

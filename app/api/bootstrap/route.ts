@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         "finance_cashboxes?active=eq.true&select=name&order=name.asc",
       ),
       supabaseSelect<unknown[]>(
-        "finance_accounts?active=eq.true&select=name&order=name.asc",
+        "finance_accounts?active=eq.true&postable=eq.true&select=name&order=code.asc.nullslast,name.asc",
       ),
       supabaseSelect<unknown[]>(
         "cost_centers?active=eq.true&select=name&order=name.asc",

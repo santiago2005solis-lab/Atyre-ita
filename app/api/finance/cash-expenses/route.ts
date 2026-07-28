@@ -25,7 +25,8 @@ type CashExpenseAction =
   | "import"
   | "review_document"
   | "transition"
-  | "update_allocation";
+  | "update_allocation"
+  | "update_document";
 
 type CashExpenseBody = {
   action?: CashExpenseAction;
@@ -33,6 +34,7 @@ type CashExpenseBody = {
   allocations?: Array<{
     accountName?: string;
     amount?: number;
+    costObjectName?: string;
     costCenterName?: string;
     detail?: string;
     linkedModule?: LinkedModule;
@@ -55,6 +57,8 @@ type CashExpenseBody = {
   status?: CashExpenseStatus;
   update?: {
     accountName?: string;
+    cashboxName?: string;
+    costObjectName?: string;
     costCenterName?: string;
     linkedModule?: LinkedModule;
   };
@@ -87,6 +91,7 @@ export async function GET(request: NextRequest) {
       accounts: [],
       batches: [],
       cashboxes: [],
+      cashboxBalances: {},
       commerceRecords: [],
       costCenters: [],
       documents: [],
@@ -197,7 +202,12 @@ export async function PATCH(request: NextRequest) {
   const body = (await request.json()) as CashExpenseBody;
   if (
     !body.action ||
-    !["review_document", "transition", "update_allocation"].includes(body.action)
+    ![
+      "review_document",
+      "transition",
+      "update_allocation",
+      "update_document",
+    ].includes(body.action)
   ) {
     return NextResponse.json(
       { error: "La accion solicitada no es valida." },
@@ -251,12 +261,36 @@ export async function PATCH(request: NextRequest) {
         {
           p_account_name: clean(body.update.accountName),
           p_allocation_id: body.allocationId,
+          p_cost_object_name: clean(body.update.costObjectName) || null,
           p_cost_center_name: clean(body.update.costCenterName),
           p_linked_module: body.update.linkedModule,
         },
       );
       return NextResponse.json({
         allocation: cashExpenseAllocationFromRow(firstRow(result) as never),
+        storageMode: "supabase",
+      });
+    }
+
+    if (body.action === "update_document") {
+      if (!body.documentId || !clean(body.update?.cashboxName)) {
+        return NextResponse.json(
+          { error: "Seleccione la caja que afectara el comprobante." },
+          { status: 400 },
+        );
+      }
+
+      const result = await supabaseInsert<
+        Record<string, unknown> | Record<string, unknown>[]
+      >(
+        "rpc/finance_cash_expense_update_document",
+        {
+          p_cashbox_name: clean(body.update?.cashboxName),
+          p_document_id: body.documentId,
+        },
+      );
+      return NextResponse.json({
+        document: cashExpenseDocumentFromRow(firstRow(result) as never),
         storageMode: "supabase",
       });
     }
@@ -313,8 +347,14 @@ async function loadCashExpenseBundle(period: string) {
     );
   }
 
-  const [batchRows, commerceRows, cashboxRows, accountRows, costCenterRows] =
-    await Promise.all([
+  const [
+    batchRows,
+    commerceRows,
+    cashboxRows,
+    cashboxBalanceRows,
+    accountRows,
+    costCenterRows,
+  ] = await Promise.all([
       supabaseSelect<Record<string, unknown>[]>(
         "finance_import_batches?select=*&order=created_at.desc&limit=10",
       ),
@@ -325,7 +365,10 @@ async function loadCashExpenseBundle(period: string) {
         "finance_cashboxes?active=eq.true&select=name&order=name.asc",
       ),
       supabaseSelect<Record<string, unknown>[]>(
-        "finance_accounts?active=eq.true&select=name&order=name.asc",
+        "finance_cashbox_current_balance?select=cashbox_name,balance",
+      ),
+      supabaseSelect<Record<string, unknown>[]>(
+        "finance_accounts?active=eq.true&postable=eq.true&select=name&order=code.asc.nullslast,name.asc",
       ),
       supabaseSelect<Record<string, unknown>[]>(
         "cost_centers?active=eq.true&select=name&order=name.asc",
@@ -345,6 +388,15 @@ async function loadCashExpenseBundle(period: string) {
       cashExpenseImportBatchFromRow(row as never),
     ),
     cashboxes: cashboxRows.map((row) => clean(row.name)).filter(Boolean),
+    cashboxBalances: Object.fromEntries(
+      cashboxRows.map((row) => {
+        const name = clean(row.name);
+        const report = cashboxBalanceRows.find(
+          (balanceRow) => clean(balanceRow.cashbox_name) === name,
+        );
+        return [name, Number(report?.balance ?? 0)];
+      }),
+    ),
     commerceRecords: commerceRows.map((row) =>
       importedCommerceRecordFromRow(row as never),
     ),
@@ -426,11 +478,13 @@ function cashExpenseError(error: unknown) {
   const migrationRequired =
     message.includes("finance_cash_expenses") ||
     message.includes("finance_cash_expense_allocations") ||
+    message.includes("finance_cashbox_current_balance") ||
     message.includes("finance_import_batches") ||
     message.includes("finance_imported_commerce") ||
     message.includes("finance_import_legacy_cash_backup") ||
     message.includes("finance_cash_expense_create") ||
     message.includes("finance_cash_expense_update_allocation") ||
+    message.includes("finance_cash_expense_update_document") ||
     message.includes("finance_cash_expense_review_document") ||
     message.includes("finance_cash_expense_transition") ||
     message.includes("PGRST205") ||

@@ -26,6 +26,7 @@ type CashExpenseView = "comprobantes" | "conciliacion" | "importaciones";
 type CashExpenseBundle = {
   accounts: string[];
   batches: CashExpenseImportBatch[];
+  cashboxBalances: Record<string, number>;
   cashboxes: string[];
   commerceRecords: ImportedCommerceRecord[];
   costCenters: string[];
@@ -36,6 +37,7 @@ type CashExpenseBundle = {
 type DraftAllocation = {
   accountName: string;
   amount: string;
+  costObjectName: string;
   costCenterName: string;
   detail: string;
   linkedModule: LinkedModule;
@@ -69,6 +71,7 @@ type ImportPreview = {
 const emptyBundle: CashExpenseBundle = {
   accounts: [],
   batches: [],
+  cashboxBalances: {},
   cashboxes: [],
   commerceRecords: [],
   costCenters: [],
@@ -277,14 +280,6 @@ export function CashExpensesPanel({
     }
   }
 
-  async function reviewDocument(documentId: string) {
-    await patchDocument(
-      documentId,
-      { action: "review_document", documentId },
-      "Clasificacion revisada. El comprobante ya puede confirmarse.",
-    );
-  }
-
   async function transitionDocument(
     documentId: string,
     status: "confirmado" | "anulado",
@@ -336,6 +331,7 @@ export function CashExpensesPanel({
     allocation: CashExpenseAllocation,
     update: {
       accountName: string;
+      costObjectName: string;
       costCenterName: string;
       linkedModule: LinkedModule;
     },
@@ -369,6 +365,21 @@ export function CashExpensesPanel({
     } finally {
       setBusy("");
     }
+  }
+
+  async function updateDocumentCashbox(
+    documentId: string,
+    cashboxName: string,
+  ) {
+    await patchDocument(
+      documentId,
+      {
+        action: "update_document",
+        documentId,
+        update: { cashboxName },
+      },
+      "Caja revisada y guardada.",
+    );
   }
 
   return (
@@ -523,6 +534,8 @@ export function CashExpensesPanel({
                 <CashExpenseRow
                   accounts={accounts}
                   busy={busy}
+                  cashboxBalances={bundle.cashboxBalances}
+                  cashboxes={cashboxes}
                   canAdmin={canAdmin}
                   canEdit={canEdit}
                   costCenters={costCenters}
@@ -530,7 +543,6 @@ export function CashExpensesPanel({
                   expanded={expandedId === document.id}
                   key={document.id}
                   money={money}
-                  onReview={reviewDocument}
                   onToggle={() =>
                     setExpandedId((current) =>
                       current === document.id ? "" : document.id,
@@ -538,6 +550,7 @@ export function CashExpensesPanel({
                   }
                   onTransition={transitionDocument}
                   onUpdateAllocation={updateAllocation}
+                  onUpdateCashbox={updateDocumentCashbox}
                 />
               ))
             ) : (
@@ -664,26 +677,29 @@ export function CashExpensesPanel({
 function CashExpenseRow({
   accounts,
   busy,
+  cashboxBalances,
+  cashboxes,
   canAdmin,
   canEdit,
   costCenters,
   document,
   expanded,
   money,
-  onReview,
   onToggle,
   onTransition,
   onUpdateAllocation,
+  onUpdateCashbox,
 }: {
   accounts: string[];
   busy: string;
+  cashboxBalances: Record<string, number>;
+  cashboxes: string[];
   canAdmin: boolean;
   canEdit: boolean;
   costCenters: string[];
   document: CashExpenseDocument;
   expanded: boolean;
   money: (value: number) => string;
-  onReview: (documentId: string) => Promise<void>;
   onToggle: () => void;
   onTransition: (
     documentId: string,
@@ -693,9 +709,14 @@ function CashExpenseRow({
     allocation: CashExpenseAllocation,
     update: {
       accountName: string;
+      costObjectName: string;
       costCenterName: string;
       linkedModule: LinkedModule;
     },
+  ) => Promise<void>;
+  onUpdateCashbox: (
+    documentId: string,
+    cashboxName: string,
   ) => Promise<void>;
 }) {
   const automaticCount = document.allocations.filter(
@@ -736,6 +757,17 @@ function CashExpenseRow({
 
       {expanded && (
         <div className="cash-expense-detail">
+          <CashboxImpactEditor
+            busy={busy === document.id}
+            canEdit={canEdit && document.status === "pendiente"}
+            cashboxBalances={cashboxBalances}
+            cashboxes={cashboxes}
+            document={document}
+            key={`${document.id}-${document.cashboxName}-${document.cashboxReviewed}`}
+            money={money}
+            onSave={onUpdateCashbox}
+          />
+
           <div className="cash-expense-metadata">
             <dl>
               <div>
@@ -758,7 +790,7 @@ function CashExpenseRow({
             {automaticCount > 0 && document.status === "pendiente" && (
               <div className="status-banner warning">
                 {automaticCount} distribuciones conservan una clasificacion
-                automatica. Revise el comprobante antes de confirmarlo.
+                automatica. Guarde cada linea despues de revisarla.
               </div>
             )}
           </div>
@@ -769,6 +801,7 @@ function CashExpenseRow({
               <span>Modulo</span>
               <span>Cuenta contable</span>
               <span>Centro de costo</span>
+              <span>Objeto asociado</span>
               <span>Monto</span>
               <span>Control</span>
             </div>
@@ -779,7 +812,7 @@ function CashExpenseRow({
                 busy={busy === allocation.id}
                 canEdit={canEdit && document.status === "pendiente"}
                 costCenters={costCenters}
-                key={`${allocation.id}-${allocation.mappingStatus}-${allocation.accountName}-${allocation.costCenterName}-${allocation.linkedModule}`}
+                key={`${allocation.id}-${allocation.mappingStatus}-${allocation.accountName}-${allocation.costCenterName}-${allocation.costObjectName}-${allocation.linkedModule}`}
                 money={money}
                 onSave={onUpdateAllocation}
               />
@@ -787,18 +820,6 @@ function CashExpenseRow({
           </div>
 
           <div className="cash-expense-detail-actions">
-            {canEdit &&
-              document.status === "pendiente" &&
-              automaticCount > 0 && (
-                <button
-                  className="secondary-button"
-                  disabled={busy === document.id}
-                  onClick={() => void onReview(document.id)}
-                  type="button"
-                >
-                  Marcar clasificacion revisada
-                </button>
-              )}
             {canAdmin && document.status === "pendiente" && (
               <>
                 <button
@@ -811,7 +832,11 @@ function CashExpenseRow({
                 </button>
                 <button
                   className="submit-button"
-                  disabled={busy === document.id || automaticCount > 0}
+                  disabled={
+                    busy === document.id ||
+                    automaticCount > 0 ||
+                    !document.cashboxReviewed
+                  }
                   onClick={() =>
                     void onTransition(document.id, "confirmado")
                   }
@@ -838,6 +863,84 @@ function CashExpenseRow({
   );
 }
 
+function CashboxImpactEditor({
+  busy,
+  canEdit,
+  cashboxBalances,
+  cashboxes,
+  document,
+  money,
+  onSave,
+}: {
+  busy: boolean;
+  canEdit: boolean;
+  cashboxBalances: Record<string, number>;
+  cashboxes: string[];
+  document: CashExpenseDocument;
+  money: (value: number) => string;
+  onSave: (documentId: string, cashboxName: string) => Promise<void>;
+}) {
+  const [cashboxName, setCashboxName] = useState(document.cashboxName);
+
+  const confirmedBalance = cashboxBalances[cashboxName] ?? 0;
+  const isPending = document.status === "pendiente";
+  const projectedBalance = isPending
+    ? confirmedBalance - document.totalAmount
+    : confirmedBalance;
+
+  return (
+    <section className="cashbox-impact">
+      <div className="cashbox-impact-editor">
+        <span className="cashbox-impact-title">
+          <strong>Caja afectada</strong>
+          <small>
+            {document.cashboxReviewed
+              ? "Caja revisada"
+              : "Pendiente de revisar"}
+          </small>
+        </span>
+        <select
+          disabled={!canEdit || busy}
+          onChange={(event) => setCashboxName(event.target.value)}
+          value={cashboxName}
+        >
+          {cashboxes.map((cashbox) => (
+            <option key={cashbox}>{cashbox}</option>
+          ))}
+        </select>
+        {canEdit && (
+          <button
+            className="small-action-button"
+            disabled={busy || !cashboxName}
+            onClick={() => void onSave(document.id, cashboxName)}
+            type="button"
+          >
+            {busy ? "Guardando..." : "Guardar caja"}
+          </button>
+        )}
+      </div>
+      <dl className="cashbox-impact-values">
+        <div>
+          <dt>Saldo confirmado</dt>
+          <dd>{money(confirmedBalance)}</dd>
+        </div>
+        <div>
+          <dt>{isPending ? "Egreso al confirmar" : "Importe documentado"}</dt>
+          <dd className="negative">
+            {money(isPending ? -document.totalAmount : document.totalAmount)}
+          </dd>
+        </div>
+        <div>
+          <dt>{isPending ? "Saldo proyectado" : "Saldo actual"}</dt>
+          <dd className={projectedBalance < 0 ? "negative" : "positive"}>
+            {money(projectedBalance)}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 function AllocationRow({
   accounts,
   allocation,
@@ -857,12 +960,16 @@ function AllocationRow({
     allocation: CashExpenseAllocation,
     update: {
       accountName: string;
+      costObjectName: string;
       costCenterName: string;
       linkedModule: LinkedModule;
     },
   ) => Promise<void>;
 }) {
   const [accountName, setAccountName] = useState(allocation.accountName);
+  const [costObjectName, setCostObjectName] = useState(
+    allocation.costObjectName,
+  );
   const [costCenterName, setCostCenterName] = useState(
     allocation.costCenterName,
   );
@@ -904,6 +1011,12 @@ function AllocationRow({
           <option key={center}>{center}</option>
         ))}
       </select>
+      <input
+        disabled={!canEdit || busy}
+        onChange={(event) => setCostObjectName(event.target.value)}
+        placeholder="Vehiculo, persona, obra..."
+        value={costObjectName}
+      />
       <strong className="allocation-amount">{money(allocation.amount)}</strong>
       <span className="allocation-control">
         <span
@@ -918,6 +1031,7 @@ function AllocationRow({
             onClick={() =>
               void onSave(allocation, {
                 accountName,
+                costObjectName,
                 costCenterName,
                 linkedModule,
               })
@@ -1120,7 +1234,9 @@ function CashExpenseEntry({
       <div className="entry-allocation-heading">
         <div>
           <strong>Distribucion del gasto</strong>
-          <small>Asigne modulo, cuenta, centro de costo y monto.</small>
+          <small>
+            Asigne modulo, cuenta, centro, objeto asociado y monto.
+          </small>
         </div>
         <button
           className="secondary-button"
@@ -1185,6 +1301,18 @@ function CashExpenseEntry({
                   <option key={center}>{center}</option>
                 ))}
               </select>
+            </label>
+            <label>
+              Objeto asociado
+              <input
+                onChange={(event) =>
+                  updateAllocation(index, {
+                    costObjectName: event.target.value,
+                  })
+                }
+                placeholder="Vehiculo, persona, obra..."
+                value={allocation.costObjectName}
+              />
             </label>
             <label>
               Detalle
@@ -1451,6 +1579,7 @@ function createDraftAllocation(
   return {
     accountName: accounts.includes("Otros") ? "Otros" : accounts[0] ?? "",
     amount: "",
+    costObjectName: "",
     costCenterName: costCenters.includes("General")
       ? "General"
       : costCenters[0] ?? "",

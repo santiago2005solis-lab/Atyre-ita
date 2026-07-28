@@ -2607,7 +2607,12 @@ function MovementTable({
               <td>
                 <div className="table-primary">
                   <strong>{movement.accountName}</strong>
-                  <span>{movement.costCenterName}</span>
+                  <span>
+                    {movement.costCenterName}
+                    {movement.costObjectName
+                      ? ` | ${movement.costObjectName}`
+                      : ""}
+                  </span>
                 </div>
               </td>
               <td>

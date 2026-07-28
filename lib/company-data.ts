@@ -18,6 +18,7 @@ export type FinanceMovement = {
   id: string;
   accountName: string;
   cashboxName: string;
+  costObjectName?: string;
   costCenterName: string;
   movementType: FinanceMovementType;
   movementDate: string;

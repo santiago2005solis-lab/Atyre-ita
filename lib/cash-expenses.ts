@@ -7,6 +7,7 @@ export type CommerceImportStatus = "pendiente" | "conciliado" | "omitido";
 export type CashExpenseAllocation = {
   accountName: string;
   amount: number;
+  costObjectName: string;
   costCenterName: string;
   detail: string;
   documentId: string;
@@ -21,6 +22,7 @@ export type CashExpenseAllocation = {
 export type CashExpenseDocument = {
   allocations: CashExpenseAllocation[];
   cashboxName: string;
+  cashboxReviewed: boolean;
   createdAt: string;
   description: string;
   documentDate: string;
@@ -74,6 +76,7 @@ export type ImportedCommerceRecord = {
 
 type CashExpenseRow = {
   cashbox_name: string;
+  cashbox_reviewed: boolean;
   created_at: string;
   description: string;
   document_date: string;
@@ -94,6 +97,7 @@ type CashExpenseRow = {
 type CashExpenseAllocationRow = {
   account_name: string;
   amount: number | string;
+  cost_object_name: string | null;
   cost_center_name: string;
   detail: string | null;
   document_id: string;
@@ -146,6 +150,7 @@ export function cashExpenseDocumentFromRow(
   return {
     allocations,
     cashboxName: row.cashbox_name,
+    cashboxReviewed: row.cashbox_reviewed,
     createdAt: row.created_at,
     description: row.description,
     documentDate: row.document_date,
@@ -170,6 +175,7 @@ export function cashExpenseAllocationFromRow(
   return {
     accountName: row.account_name,
     amount: Number(row.amount),
+    costObjectName: row.cost_object_name ?? "",
     costCenterName: row.cost_center_name,
     detail: row.detail ?? "",
     documentId: row.document_id,
