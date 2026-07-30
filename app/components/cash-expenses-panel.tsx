@@ -1055,6 +1055,9 @@ function CashboxImpactEditor({
   const confirmedBalance = cashboxBalances[cashboxName] ?? 0;
   const isPending = document.status === "pendiente";
   const isCashboxChange = cashboxName !== document.cashboxName;
+  const canSaveCashbox =
+    Boolean(cashboxName) &&
+    (!document.cashboxReviewed || isCashboxChange);
   const projectedBalance = isPending || isCashboxChange
     ? confirmedBalance - document.totalAmount
     : confirmedBalance;
@@ -1095,7 +1098,7 @@ function CashboxImpactEditor({
         {canEdit && (
           <button
             className="small-action-button"
-            disabled={busy || !cashboxName || !isCashboxChange}
+            disabled={busy || !canSaveCashbox}
             onClick={saveCashbox}
             type="button"
           >
